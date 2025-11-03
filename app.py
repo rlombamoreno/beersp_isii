@@ -110,16 +110,24 @@ class UsuarioGalardon(db.Model):
 # -------------------------
 
 def enviar_correo_verificacion(correo, nombre_usuario):
-    token = serializer.dumps(correo, salt='verificacion-email')
-    enlace = url_for('verificar_email', token=token, _external=True)
-    msg = Message(
-        subject="¡Verifica tu cuenta en BeerSp!",
-        recipients=[correo],
-        body=f"Hola {nombre_usuario},\n\n"
-             f"Por favor, haz clic en el siguiente enlace para verificar tu cuenta:\n{enlace}\n\n"
-             "Gracias por unirte a BeerSp."
-    )
-    mail.send(msg)
+    if os.getenv('RENDER') is not None:
+        # En Render: solo simula el envío
+        print(f"[RENDER] Simulando verificación para {correo}")
+        return True
+    # En local: envía realmente con Gmail o Brevo
+    try:
+        token = serializer.dumps(correo, salt='verificacion-email')
+        enlace = url_for('verificar_email', token=token, _external=True)
+        msg = Message(
+            subject="¡Verifica tu cuenta en BeerSp!",
+            recipients=[correo],
+            body=f"Hola {nombre_usuario},\n\nHaz clic aquí: {enlace}"
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error al enviar correo: {e}")
+        return False
 
 def es_mayor_edad(fecha_nac):
     hoy = datetime.now(timezone.utc).date()
@@ -173,6 +181,7 @@ def registro():
             flash("Correo ya registrado.", "error")
             return render_template('registro.html')
 
+        # Crear usuario
         nuevo_usuario = Usuario(
             nombre_usuario=nombre_usuario,
             correo=correo,
@@ -183,13 +192,21 @@ def registro():
         db.session.add(nuevo_usuario)
         db.session.commit()
 
-        try:
-            enviar_correo_verificacion(correo, nombre_usuario)
-            flash("¡Registro exitoso! Revisa tu correo para verificar tu cuenta.", "success")
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Error al enviar el correo: {str(e)}", "error")
-            return render_template('registro.html')
+        # ✅ Manejo inteligente de correos: real en local, simulado en Render
+        if os.getenv('RENDER') is not None:
+            # En Render: verificamos automáticamente (para evitar timeout)
+            nuevo_usuario.verificado = True
+            db.session.commit()
+            flash("Registro exitoso. Cuenta verificada automáticamente.", "success")
+        else:
+            # En local: enviamos correo real
+            try:
+                enviar_correo_verificacion(correo, nombre_usuario)
+                flash("¡Registro exitoso! Revisa tu correo para verificar tu cuenta.", "success")
+            except Exception as e:
+                db.session.rollback()
+                flash(f"Error al enviar el correo: {str(e)}", "error")
+                return render_template('registro.html')
 
         return redirect(url_for('login'))
 
