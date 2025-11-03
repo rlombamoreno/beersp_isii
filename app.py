@@ -27,7 +27,6 @@ os.makedirs('instance', exist_ok=True)
 os.makedirs('static/fotos', exist_ok=True)
 
 app = Flask(__name__)
-app.config['SERVER_NAME'] = 'localhost:5000'
 app.config['SECRET_KEY'] = 'una_clave_secreta_muy_segura'
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_dir, "beersp.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
