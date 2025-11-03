@@ -1,5 +1,6 @@
 .env
 instance/
+static/fotos/*
 __pycache__/
 *.pyc
 .DS_Store
