@@ -1,0 +1,7 @@
+# Archivos sensibles
+.env
+instance/beersp.db
+
+# Caché de Python
+__pycache__/
+*.pyc

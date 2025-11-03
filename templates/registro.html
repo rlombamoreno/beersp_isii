@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card p-4">
+  <h3 class="text-center mb-4">Crear cuenta</h3>
+  <form method="POST">
+    <div class="mb-3">
+      <label for="nombre_usuario" class="form-label">Nombre de usuario</label>
+      <input type="text" class="form-control" id="nombre_usuario" name="nombre_usuario" required>
+    </div>
+    <div class="mb-3">
+      <label for="correo" class="form-label">Correo electrónico</label>
+      <input type="email" class="form-control" id="correo" name="correo" required>
+    </div>
+    <div class="mb-3">
+      <label for="contraseña" class="form-label">Contraseña</label>
+      <input type="password" class="form-control" id="contraseña" name="contraseña" required>
+    </div>
+    <div class="mb-3">
+      <label for="contraseña2" class="form-label">Repetir contraseña</label>
+      <input type="password" class="form-control" id="contraseña2" name="contraseña2" required>
+    </div>
+    <div class="mb-3">
+      <label for="fecha_nacimiento" class="form-label">Fecha de nacimiento</label>
+      <input type="text" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento"
+       placeholder="Selecciona tu fecha de nacimiento" required>
+      <div class="form-text">Debes ser mayor de 18 años.</div>
+    </div>
+    <button type="submit" class="btn btn-beersp w-100">Registrarse</button>
+  </form>
+  <div class="text-center mt-3">
+    ¿Ya tienes cuenta? <a href="{{ url_for('login') }}">Inicia sesión</a>
+  </div>
+</div>
+{% endblock %}
