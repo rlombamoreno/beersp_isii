@@ -2,23 +2,34 @@ import os
 import webbrowser
 import threading
 import time
-from datetime import datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash
+import uuid
+from datetime import datetime, timedelta,timezone
+from flask import Flask, render_template, request, redirect, url_for, flash, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from itsdangerous import URLSafeTimedSerializer
 from dotenv import load_dotenv
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+MAX_FILE_SIZE = 2 * 1024 * 1024
 
 load_dotenv()
 
 # Asegurar que la carpeta 'instance' exista
+basedir = os.path.abspath(os.path.dirname(__file__))
+instance_dir = os.path.join(basedir, 'instance')
+static_fotos_dir = os.path.join(basedir, 'static', 'fotos')
+
+
 os.makedirs('instance', exist_ok=True)
+os.makedirs('static/fotos', exist_ok=True)
 
 app = Flask(__name__)
+app.config['SERVER_NAME'] = 'localhost:5000'
 app.config['SECRET_KEY'] = 'una_clave_secreta_muy_segura'
-basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(basedir, "instance", "beersp.db")}'
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_dir, "beersp.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Configuración de correo
@@ -43,7 +54,57 @@ class Usuario(db.Model):
     correo = db.Column(db.String(120), unique=True, nullable=False)
     contraseña_hash = db.Column(db.String(128), nullable=False)
     fecha_nacimiento = db.Column(db.Date, nullable=False)
+    fecha_registro = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     verificado = db.Column(db.Boolean, default=False)
+    
+    nombre = db.Column(db.String(50))
+    apellidos = db.Column(db.String(80))
+    ubicacion = db.Column(db.String(100))
+    genero = db.Column(db.String(20))
+    presentacion = db.Column(db.Text)
+    foto = db.Column(db.String(200))
+    
+
+class Amistad(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    amigo_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    estado = db.Column(db.String(20), default='pendiente')  # 'pendiente', 'aceptado', 'rechazado'
+    fecha_solicitud = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+
+    __table_args__ = (db.UniqueConstraint('usuario_id', 'amigo_id', name='_amistad_uc'),)
+
+class Cerveza(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False)
+    estilo = db.Column(db.String(50), nullable=False)  # IPA, Lager, etc.
+    pais_procedencia = db.Column(db.String(50), nullable=False)
+    porcentaje_alcohol = db.Column(db.Float, nullable=False)
+    ibu = db.Column(db.Integer)
+    color = db.Column(db.String(50))
+
+class Degustacion(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    cerveza_id = db.Column(db.Integer, db.ForeignKey('cerveza.id'), nullable=False)
+    puntuacion = db.Column(db.Float)  # 0 a 5, puede ser NULL
+    fecha = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    comentario = db.Column(db.Text)
+    # Local, "me gusta", etc. → se pueden añadir después
+
+class Galardon(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), unique=True, nullable=False)
+    descripcion = db.Column(db.Text)
+
+class UsuarioGalardon(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
+    galardon_id = db.Column(db.Integer, db.ForeignKey('galardon.id'), nullable=False)
+    nivel = db.Column(db.Integer, default=1)
+    fecha_obtenido = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+
+    __table_args__ = (db.UniqueConstraint('usuario_id', 'galardon_id', name='_usuario_galardon_uc'),)
 
 # -------------------------
 # Funciones auxiliares
@@ -62,7 +123,7 @@ def enviar_correo_verificacion(correo, nombre_usuario):
     mail.send(msg)
 
 def es_mayor_edad(fecha_nac):
-    hoy = datetime.now(datetime.timezone.utc).date()
+    hoy = datetime.now(timezone.utc).date()
     edad = hoy.year - fecha_nac.year - ((hoy.month, hoy.day) < (fecha_nac.month, fecha_nac.day))
     return edad >= 18
 
@@ -169,7 +230,7 @@ def login():
             flash("Contraseña incorrecta.", "error")
         else:
             flash(f"¡Bienvenido, {usuario.nombre_usuario}!", "success")
-            return redirect(url_for('perfil', id=usuario.id))
+            return redirect(url_for('inicio', id=usuario.id))
 
     return render_template('login.html')
 
@@ -223,11 +284,167 @@ def restablecer_contrasena(token):
     return render_template('restablecer.html', token=token)
 
 
+@app.route('/inicio/<int:id>')
+def inicio(id):
+    usuario = Usuario.query.get_or_404(id)
+
+    # Estadísticas reales
+    degustaciones = Degustacion.query.filter_by(usuario_id=id).count()
+    locales_nuevos = 0  # se puede ampliar más tarde
+
+    # Solicitudes de amistad pendientes donde el usuario es el destinatario
+    solicitudes_amistad = Amistad.query.filter_by(amigo_id=id, estado='pendiente').count()
+
+    # Amigos aceptados (bidireccional)
+    amigos_ids_1 = db.session.query(Amistad.amigo_id).filter_by(usuario_id=id, estado='aceptado')
+    amigos_ids_2 = db.session.query(Amistad.usuario_id).filter_by(amigo_id=id, estado='aceptado')
+    amigos_ids = {r[0] for r in amigos_ids_1.union(amigos_ids_2)}
+
+    # Actividad de amigos (última degustación de cada amigo)
+    amigos_activos = []
+    for amigo_id in list(amigos_ids)[:5]:
+        amigo = Usuario.query.get(amigo_id)
+        ultima_deg = Degustacion.query.filter_by(usuario_id=amigo_id).order_by(Degustacion.fecha.desc()).first()
+        if ultima_deg and amigo:
+            cerveza = Cerveza.query.get(ultima_deg.cerveza_id)
+            if cerveza:
+                amigos_activos.append({
+                    'nombre_usuario': amigo.nombre_usuario,
+                    'ultima_cerveza': cerveza.nombre
+                })
+
+    # Tus cervezas favoritas (puntuación >= 4)
+    cervezas_favoritas = []
+    degustaciones_altas = Degustacion.query.filter(
+        Degustacion.usuario_id == id,
+        Degustacion.puntuacion >= 4.0
+    ).order_by(Degustacion.puntuacion.desc()).limit(3).all()
+
+    for d in degustaciones_altas:
+        c = Cerveza.query.get(d.cerveza_id)
+        if c:
+            cervezas_favoritas.append({
+                'nombre': c.nombre,
+                'estilo': c.estilo,
+                'puntuacion': d.puntuacion
+            })
+
+    # Tus últimos galardones
+    galardones_db = db.session.query(UsuarioGalardon, Galardon)\
+        .join(Galardon)\
+        .filter(UsuarioGalardon.usuario_id == id)\
+        .order_by(UsuarioGalardon.fecha_obtenido.desc())\
+        .limit(5).all()
+
+    galardones = [{'nombre': g.Galardon.nombre, 'nivel': g.UsuarioGalardon.nivel} for g in galardones_db]
+
+    return render_template(
+        'inicio.html',
+        usuario=usuario,
+        stats={
+            'degustaciones': degustaciones,
+            'locales_nuevos': locales_nuevos,
+            'solicitudes_amistad': solicitudes_amistad
+        },
+        amigos_activos=amigos_activos,
+        cervezas_favoritas=cervezas_favoritas,
+        galardones=galardones
+    )
+    
+
 @app.route('/perfil/<int:id>')
 def perfil(id):
     usuario = Usuario.query.get_or_404(id)
-    return f"<h1>Perfil de {usuario.nombre_usuario}</h1><p>Verificado: {'Sí' if usuario.verificado else 'No'}</p>"
+    return render_template('perfil.html', usuario=usuario)
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+           
+
+@app.route('/perfil/<int:id>/editar', methods=['GET', 'POST'])
+def editar_perfil(id):
+    usuario = Usuario.query.get_or_404(id)
+
+    if request.method == 'POST':
+        # Validar nombre de usuario
+        nuevo_usuario = request.form['nombre_usuario'].strip()
+        if nuevo_usuario != usuario.nombre_usuario:
+            if Usuario.query.filter_by(nombre_usuario=nuevo_usuario).first():
+                flash("Nombre de usuario ya en uso.", "error")
+                return render_template('editar_perfil.html', usuario=usuario)
+
+        # Actualizar campos de texto
+        usuario.nombre_usuario = nuevo_usuario
+        usuario.nombre = request.form.get('nombre') or None
+        usuario.apellidos = request.form.get('apellidos') or None
+        usuario.ubicacion = request.form.get('ubicacion') or None
+        usuario.genero = request.form.get('genero') or None
+        usuario.presentacion = request.form.get('presentacion') or None
+
+        # Subir foto (si se ha enviado)
+        if 'foto' in request.files:
+            file = request.files['foto']
+            if file and file.filename != '':
+                if not allowed_file(file.filename):
+                    flash("Tipo de archivo no permitido. Usa JPG, PNG o GIF.", "error")
+                    return render_template('editar_perfil.html', usuario=usuario)
+                if len(file.read()) > MAX_FILE_SIZE:
+                    flash("La imagen es demasiado grande (máx. 2 MB).", "error")
+                    return render_template('editar_perfil.html', usuario=usuario)
+                file.seek(0)  # Reiniciar puntero tras leer
+
+                # Generar nombre único
+                ext = file.filename.rsplit('.', 1)[1].lower()
+                filename = f"user_{usuario.id}_{uuid.uuid4().hex[:8]}.{ext}"
+                ffilepath = os.path.join(static_fotos_dir, filename)
+                file.save(ffilepath)
+
+                # Borrar foto anterior si existe y no es la por defecto
+                if usuario.foto and usuario.foto.startswith('user_'):
+                    old_path = os.path.join('static/fotos', usuario.foto)
+                    if os.path.exists(old_path):
+                        os.remove(old_path)
+
+                usuario.foto = filename
+
+        try:
+            db.session.commit()
+            flash("Perfil actualizado correctamente.", "success")
+            return redirect(url_for('perfil', id=usuario.id))
+        except Exception as e:
+            db.session.rollback()
+            flash("Error al guardar los cambios.", "error")
+
+    return render_template('editar_perfil.html', usuario=usuario)
+
+
+@app.route('/eliminar_cuenta/<int:id>', methods=['GET', 'POST'])
+def eliminar_cuenta(id):
+    usuario = Usuario.query.get_or_404(id)
+    if request.method == 'POST':
+        # Confirmación: el formulario debe incluir un campo oculto o checkbox
+        confirmacion = request.form.get('confirmar')
+        if confirmacion == 'si':
+            # Eliminar al usuario y sus datos relacionados
+            Degustacion.query.filter_by(usuario_id=id).delete()
+            Amistad.query.filter((Amistad.usuario_id == id) | (Amistad.amigo_id == id)).delete()
+            UsuarioGalardon.query.filter_by(usuario_id=id).delete()
+            db.session.delete(usuario)
+            db.session.commit()
+            session.pop('user_id', None)
+            flash("Tu cuenta ha sido eliminada permanentemente.", "success")
+            return redirect(url_for('registro'))
+        else:
+            flash("Debes confirmar la eliminación de tu cuenta.", "error")
+    return render_template('eliminar_cuenta.html', usuario=usuario)
+
+
+@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    flash("Has cerrado sesión correctamente.", "info")
+    return redirect(url_for('login'))
 # -------------------------
 # Inicialización
 # -------------------------

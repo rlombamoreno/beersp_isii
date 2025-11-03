@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card p-4">
+  <!-- Menú general -->
+  <nav class="nav nav-pills nav-fill mb-4">
+    <a class="nav-link active" href="{{ url_for('inicio', id=usuario.id) }}">Inicio</a>
+    <a class="nav-link" href="#">Top Degustaciones</a>
+    <a class="nav-link" href="{{ url_for('perfil', id=usuario.id) }}">Mi Perfil</a>
+    <a class="nav-link" href="#">Buscar</a>
+    <a class="nav-link" href="{{ url_for('logout') }}">Cerrar sesión</a>
+  </nav>
+
+  <!-- Panel resumen del perfil -->
+  <div class="mb-4">
+    <h5 class="border-bottom pb-2">Mi perfil</h5>
+    <div class="d-flex align-items-center mb-3">
+      {% if usuario.foto %}
+        <img src="{{ url_for('static', filename='fotos/' + usuario.foto) }}"
+             class="rounded-circle me-3" width="60" height="60" style="object-fit:cover;">
+      {% else %}
+        <div class="bg-light rounded-circle me-3 d-flex align-items-center justify-content-center"
+             style="width:60px;height:60px;">
+          <span class="text-muted">{{ usuario.nombre_usuario[0]|upper }}</span>
+        </div>
+      {% endif %}
+      <div>
+        <h6 class="mb-0">{{ usuario.nombre_usuario }}</h6>
+        <small class="text-muted">Miembro desde {{ usuario.fecha_registro.strftime('%B %Y') }}</small>
+      </div>
+    </div>
+    <ul class="list-unstyled small">
+      <li>✅ {{ stats.degustaciones }} degustaciones</li>
+      <li>📍 {{ stats.locales_nuevos }} locales nuevos (últimos 7 días)</li>
+    </ul>
+    {% if stats.solicitudes_amistad > 0 %}
+      <div class="alert alert-info p-2 mt-2">
+        📩 Tienes <strong>{{ stats.solicitudes_amistad }}</strong> solicitud(es) de amistad pendiente(s).
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Actividad de amigos -->
+  {% if amigos_activos %}
+  <div class="mb-4">
+    <h5 class="border-bottom pb-2">Amigos activos</h5>
+    {% for amigo in amigos_activos %}
+      <p class="mb-1"><strong>{{ amigo.nombre_usuario }}</strong> degustó <em>{{ amigo.ultima_cerveza }}</em></p>
+    {% endfor %}
+    <a href="#" class="btn btn-sm btn-outline-secondary">Ver todos</a>
+  </div>
+  {% endif %}
+
+  <!-- Cervezas favoritas -->
+  {% if cervezas_favoritas %}
+  <div class="mb-4">
+    <h5 class="border-bottom pb-2">Mis cervezas favoritas</h5>
+    <ul class="list-unstyled">
+      {% for cerveza in cervezas_favoritas %}
+        <li>{{ cerveza.nombre }} ({{ cerveza.estilo }}) — ⭐ {{ "%.1f"|format(cerveza.puntuacion) }}</li>
+      {% endfor %}
+    </ul>
+    <a href="#" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+  </div>
+  {% endif %}
+
+  <!-- Galardones -->
+  {% if galardones %}
+  <div>
+    <h5 class="border-bottom pb-2">Mis últimos galardones</h5>
+    <div class="d-flex flex-wrap gap-2">
+      {% for galardon in galardones %}
+        <span class="badge bg-warning text-dark">
+          {{ galardon.nombre }} (Nv. {{ galardon.nivel }})
+        </span>
+      {% endfor %}
+    </div>
+    <a href="#" class="btn btn-sm btn-outline-secondary mt-2">Ver todos</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

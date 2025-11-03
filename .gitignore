@@ -1,6 +1,7 @@
 # Archivos sensibles
 .env
 instance/beersp.db
+static/fotos/*
 
 # Caché de Python
 __pycache__/

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card p-4">
+  <h3 class="text-center mb-4">Editar perfil</h3>
+  <form method="POST" enctype="multipart/form-data">
+    <!-- Nombre de usuario -->
+    <div class="mb-3">
+      <label class="form-label">Nombre de usuario *</label>
+      <input type="text" class="form-control" name="nombre_usuario" value="{{ usuario.nombre_usuario }}" required>
+    </div>
+
+    <!-- Foto de perfil -->
+    <div class="mb-3">
+        <label class="form-label">Foto de perfil</label>
+        <input type="file" class="form-control" name="foto" accept="image/*">
+        <div class="form-text">JPG, PNG o GIF. Máx. 2 MB.</div>
+        {% if usuario.foto %}
+        <div class="mt-2">
+            <img src="{{ url_for('static', filename='fotos/' + usuario.foto) }}" 
+                alt="Foto actual" class="img-thumbnail" style="max-height:100px;">
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Nombre y apellidos -->
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <label class="form-label">Nombre</label>
+        <input type="text" class="form-control" name="nombre" value="{{ usuario.nombre or '' }}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Apellidos</label>
+        <input type="text" class="form-control" name="apellidos" value="{{ usuario.apellidos or '' }}">
+      </div>
+    </div>
+
+    <!-- Ubicación y género -->
+    <div class="row mb-3">
+      <div class="col-md-6">
+        <label class="form-label">Ubicación (ciudad/país)</label>
+        <input type="text" class="form-control" name="ubicacion" value="{{ usuario.ubicacion or '' }}">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Género</label>
+        <select class="form-select" name="genero">
+          <option value="">No especificar</option>
+          <option value="masculino" {% if usuario.genero == 'masculino' %}selected{% endif %}>Masculino</option>
+          <option value="femenino" {% if usuario.genero == 'femenino' %}selected{% endif %}>Femenino</option>
+          <option value="otro" {% if usuario.genero == 'otro' %}selected{% endif %}>Otro</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Presentación -->
+    <div class="mb-3">
+      <label class="form-label">Breve presentación</label>
+      <textarea class="form-control" name="presentacion" rows="3">{{ usuario.presentacion or '' }}</textarea>
+      <div class="form-text">Cuéntanos algo sobre ti (máx. 200 caracteres)</div>
+    </div>
+
+    <!-- Botón guardar -->
+    <button type="submit" class="btn btn-beersp w-100">Guardar cambios</button>
+    <div class="text-center mt-3">
+      <a href="{{ url_for('perfil', id=usuario.id) }}" class="text-muted">← Volver al perfil</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
