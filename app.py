@@ -396,12 +396,12 @@ def editar_perfil(id):
                 # Generar nombre único
                 ext = file.filename.rsplit('.', 1)[1].lower()
                 filename = f"user_{usuario.id}_{uuid.uuid4().hex[:8]}.{ext}"
-                ffilepath = os.path.join(static_fotos_dir, filename)
-                file.save(ffilepath)
+                filepath = os.path.join(static_fotos_dir, filename)  # ✅ Corregido: "filepath"
+                file.save(filepath)
 
-                # Borrar foto anterior si existe y no es la por defecto
+                # Borrar foto anterior si existe
                 if usuario.foto and usuario.foto.startswith('user_'):
-                    old_path = os.path.join('static/fotos', usuario.foto)
+                    old_path = os.path.join(static_fotos_dir, usuario.foto)  # ✅ Ruta absoluta
                     if os.path.exists(old_path):
                         os.remove(old_path)
 
