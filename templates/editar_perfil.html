@@ -1,26 +1,36 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="card p-4">
   <h3 class="text-center mb-4">Editar perfil</h3>
   <form method="POST" enctype="multipart/form-data">
+    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+
     <!-- Nombre de usuario -->
     <div class="mb-3">
       <label class="form-label">Nombre de usuario *</label>
       <input type="text" class="form-control" name="nombre_usuario" value="{{ usuario.nombre_usuario }}" required>
     </div>
 
-    <!-- Foto de perfil -->
+    <!-- Foto de perfil (mejorado) -->
     <div class="mb-3">
-        <label class="form-label">Foto de perfil</label>
-        <input type="file" class="form-control" name="foto" accept="image/*">
-        <div class="form-text">JPG, PNG o GIF. Máx. 2 MB.</div>
-        {% if usuario.foto %}
-        <div class="mt-2">
-            <img src="{{ url_for('static', filename='fotos/' + usuario.foto) }}" 
-                alt="Foto actual" class="img-thumbnail" style="max-height:100px;">
-        </div>
-        {% endif %}
+      <label class="form-label">Foto de perfil</label>
+      <div class="input-group">
+        <input type="file" class="form-control d-none" id="fotoInput" name="foto" accept="image/*">
+        <button type="button" class="btn btn-outline-secondary" 
+                onclick="document.getElementById('fotoInput').click()">
+          📷 Seleccionar imagen
+        </button>
+        <span id="fileName" class="form-text ms-2 text-muted">
+          {% if usuario.foto %}{{ usuario.foto }}{% else %}Ningún archivo seleccionado{% endif %}
+        </span>
+      </div>
+      <div class="form-text">JPG, PNG o GIF. Máx. 2 MB.</div>
+      {% if usuario.foto %}
+      <div class="mt-2">
+        <img src="{{ url_for('static', filename='fotos/' + usuario.foto) }}" 
+             alt="Foto actual" class="img-thumbnail" style="max-height:100px;">
+      </div>
+      {% endif %}
     </div>
 
     <!-- Nombre y apellidos -->
@@ -52,11 +62,15 @@
       </div>
     </div>
 
-    <!-- Presentación -->
+    <!-- Presentación con contador -->
     <div class="mb-3">
       <label class="form-label">Breve presentación</label>
-      <textarea class="form-control" name="presentacion" rows="3">{{ usuario.presentacion or '' }}</textarea>
-      <div class="form-text">Cuéntanos algo sobre ti (máx. 200 caracteres)</div>
+      <textarea class="form-control" name="presentacion" rows="3" maxlength="200"
+                oninput="document.getElementById('counter').textContent = this.value.length;">{{ usuario.presentacion or '' }}</textarea>
+      <div class="form-text d-flex justify-content-between">
+        <span>Cuéntanos algo sobre ti</span>
+        <span class="text-muted"><span id="counter">{{ usuario.presentacion|length if usuario.presentacion else 0 }}</span>/200</span>
+      </div>
     </div>
 
     <!-- Botón guardar -->
@@ -66,4 +80,12 @@
     </div>
   </form>
 </div>
+
+<script>
+const fileInput = document.getElementById('fotoInput');
+const fileName = document.getElementById('fileName');
+fileInput.addEventListener('change', function() {
+  fileName.textContent = this.files.length ? this.files[0].name : 'Ningún archivo seleccionado';
+});
+</script>
 {% endblock %}

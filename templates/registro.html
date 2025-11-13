@@ -3,6 +3,9 @@
 <div class="card p-4">
   <h3 class="text-center mb-4">Crear cuenta</h3>
   <form method="POST">
+    <!-- ✅ CSRF: seguro incluso si no está instalado flask-wtf -->
+    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+
     <div class="mb-3">
       <label for="nombre_usuario" class="form-label">Nombre de usuario</label>
       <input type="text" class="form-control" id="nombre_usuario" name="nombre_usuario" required>
@@ -25,6 +28,15 @@
        placeholder="Selecciona tu fecha de nacimiento" required>
       <div class="form-text">Debes ser mayor de 18 años.</div>
     </div>
+
+    <!-- ✅ Info para Render -->
+    {% if RENDER %}
+    <div class="alert alert-info alert-dismissible fade show" role="alert">
+      <strong>ℹ️ Nota:</strong> En esta demo, la verificación es automática (no se envían correos en Render gratis).
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
     <button type="submit" class="btn btn-beersp w-100">Registrarse</button>
   </form>
   <div class="text-center mt-3">

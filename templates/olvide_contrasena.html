@@ -6,6 +6,7 @@
     Introduce tu correo y te enviaremos un enlace para restablecerla.
   </p>
   <form method="POST">
+    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
     <div class="mb-3">
       <label for="correo" class="form-label">Correo electrónico</label>
       <input type="email" class="form-control" id="correo" name="correo" required>

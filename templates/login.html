@@ -3,6 +3,7 @@
 <div class="card p-4">
   <h3 class="text-center mb-4">Iniciar sesión</h3>
   <form method="POST">
+    {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
     <div class="mb-3">
       <label for="nombre_usuario" class="form-label">Nombre de usuario</label>
       <input type="text" class="form-control" id="nombre_usuario" name="nombre_usuario" required>
