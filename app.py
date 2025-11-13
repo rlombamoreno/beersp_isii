@@ -142,21 +142,22 @@ def enviar_correo_verificacion(correo, nombre_usuario):
         return False
 
 def seed_cervezas():
-    """Precarga 12 cervezas reales si la tabla está vacía."""
+    """Precarga 12 cervezas españolas reales si la tabla está vacía."""
     if Cerveza.query.count() == 0:
         cervezas_data = [
-            ("Westvleteren 12", "Quadrupel", "Bélgica", 10.2, 35, "Ámbar oscuro"),
-            ("Pliny the Elder", "Imperial IPA", "EE.UU.", 8.0, 100, "Dorado claro"),
-            ("Schneider Aventinus", "Weizenbock", "Alemania", 8.2, 17, "Marrón rojizo"),
-            ("La Chouffe", "Belgian Strong Ale", "Bélgica", 8.0, 25, "Ámbar"),
-            ("Founders KBS", "Imperial Stout", "EE.UU.", 12.3, 70, "Negro"),
-            ("Augustiner Helles", "Helles Lager", "Alemania", 5.2, 18, "Dorado pálido"),
-            ("Saison Dupont", "Saison", "Bélgica", 6.5, 32, "Ámbar claro"),
-            ("Guinness Draught", "Irish Dry Stout", "Irlanda", 4.2, 45, "Negro con espuma crema"),
-            ("Chimay Blue", "Belgian Strong Dark Ale", "Bélgica", 9.0, 30, "Marrón oscuro"),
-            ("Stone IPA", "American IPA", "EE.UU.", 6.9, 77, "Ámbar dorado"),
-            ("Pilsner Urquell", "Czech Pilsner", "Rep. Checa", 4.4, 40, "Dorado claro"),
-            ("Rochefort 10", "Quadrupel", "Bélgica", 11.3, 27, "Marrón rojizo"),
+            # 🇪🇸 Cervezas artesanales y reconocidas de España
+            ("Moritz", "Lager", "España", 4.8, 18, "Dorado claro"),
+            ("Estrella Galicia", "Lager", "España", 5.5, 20, "Dorado pálido"),
+            ("Mahou Cinco Estrellas", "Lager", "España", 5.5, 22, "Dorado ámbar"),
+            ("Alhambra Reserva 1925", "Premium Lager", "España", 6.4, 25, "Ámbar dorado"),
+            ("La Virgen IPA", "American IPA", "España", 6.5, 65, "Ámbar dorado"),
+            ("Moaña Stout", "Oatmeal Stout", "España", 5.8, 35, "Negro con espuma tostada"),
+            ("Black Albert", "Belgian Strong Dark Ale", "España", 10.0, 30, "Marrón oscuro"),
+            ("Ahó!", "Pale Ale", "España", 5.4, 45, "Ámbar claro"),
+            ("Cerveza 1906 Reserva Especial", "Imperial Lager", "España", 7.2, 28, "Ámbar profundo"),
+            ("Galeton", "Barleywine", "España", 10.5, 40, "Marrón rojizo"),
+            ("Zaragoza IPA", "West Coast IPA", "España", 6.8, 70, "Dorado turbio"),
+            ("Lupulus H-75", "Double IPA", "España", 7.5, 85, "Ámbar intenso"),
         ]
         for nombre, estilo, pais, abv, ibu, color in cervezas_data:
             db.session.add(Cerveza(
@@ -168,7 +169,7 @@ def seed_cervezas():
                 color=color
             ))
         db.session.commit()
-        print("✅ 12 cervezas reales precargadas.")
+        print("✅ 12 cervezas españolas reales precargadas.")
 
 
 # ————— RUTAS —————

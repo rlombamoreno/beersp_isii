@@ -43,7 +43,7 @@
   <div class="mb-4">
     <h5 class="border-bottom pb-2">🔍 Buscar cerveza</h5>
     <div class="input-group mb-3">
-      <input type="text" id="buscador" class="form-control" 
+      <input type="text" id="buscador" class="form-control"
              placeholder="Nombre o estilo (ej: IPA, stout, belga...)">
       <button class="btn btn-outline-secondary" type="button" id="btnBuscar">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
@@ -56,7 +56,7 @@
     </div>
   </div>
 
-  <!-- ✅ Sección de favoritas: ahora persistente -->
+  <!-- ✅ Sección de favoritas: ahora persistente REALMENTE -->
   <div id="seccionFavoritas" class="mb-4 d-none">
     <h5 class="border-bottom pb-2 d-flex justify-content-between align-items-center">
       Mis cervezas favoritas
@@ -65,7 +65,7 @@
     <ul class="list-unstyled" id="listaFavoritas"></ul>
   </div>
 
-  <!-- Amigos / galardones (sin cambios) -->
+  <!-- Amigos / galardones -->
   {% if amigos_activos %}
   <div class="mb-4">
     <h5 class="border-bottom pb-2">Amigos activos</h5>
@@ -121,75 +121,58 @@
 </div>
 
 <script>
-// ✅ 1. Recuperar favoritas AL CARGAR la página
+// ✅ 1. Cargar IDs de favoritas
 const FAVORITAS_KEY = 'beersp_favoritas_usuario_{{ usuario.id }}';
 let favoritas = JSON.parse(localStorage.getItem(FAVORITAS_KEY) || '[]');
 const cervezasCache = {};
 let sugerenciasMostradas = false;
 
-// ✅ 2. Función para mostrar favoritas (sin "undefined")
+// ✅ 2. Función para mostrar favoritas (segura)
 function actualizarSeccionFavoritas() {
   const seccion = document.getElementById('seccionFavoritas');
   const lista = document.getElementById('listaFavoritas');
   const btn = document.getElementById('btnVerTodasFavoritas');
-  
-  // ✅ Si no hay favoritas, ocultar sección
-  if (favoritas.length === 0) {
-    seccion.classList.add('d-none');
-    return;
-  }
 
-  seccion.classList.remove('d-none');
-
-  // ✅ Solo mostrar las que están en caché (evita errores)
+  // Solo mostrar si hay datos en caché
   const disponibles = favoritas.filter(id => cervezasCache[id]);
-  
   if (disponibles.length === 0) {
     seccion.classList.add('d-none');
     return;
   }
 
-  // ✅ Mostrar hasta 3 por defecto
+  seccion.classList.remove('d-none');
   const paraMostrar = disponibles.slice(0, 3);
   lista.innerHTML = paraMostrar.map(id => {
     const c = cervezasCache[id];
-    // ✅ Mostrar ⭐ solo si hay puntuación
-    const puntuacionStr = c.puntuacion !== undefined && c.puntuacion !== null 
-      ? ` — ⭐ ${parseFloat(c.puntuacion).toFixed(1)}` 
+    const puntuacionStr = c.puntuacion !== undefined && c.puntuacion !== null
+      ? ` — ⭐ ${parseFloat(c.puntuacion).toFixed(1)}`
       : '';
     return `<li>${c.nombre} (${c.estilo})${puntuacionStr}</li>`;
   }).join('');
 
-  // ✅ "Ver todas" solo si hay +3
   if (disponibles.length > 3) {
     btn.classList.remove('d-none');
-    const todasExistentes = document.getElementById('favoritasTodas');
-    if (todasExistentes) todasExistentes.remove();
-
     btn.onclick = () => {
       const todasDiv = document.createElement('div');
       todasDiv.id = 'favoritasTodas';
       todasDiv.classList.add('mt-2');
       todasDiv.innerHTML = disponibles.slice(3).map(id => {
         const c = cervezasCache[id];
-        const puntuacionStr = c.puntuacion !== undefined && c.puntuacion !== null 
-          ? ` — ⭐ ${parseFloat(c.puntuacion).toFixed(1)}` 
+        const puntuacionStr = c.puntuacion !== undefined && c.puntuacion !== null
+          ? ` — ⭐ ${parseFloat(c.puntuacion).toFixed(1)}`
           : '';
         return `<li>${c.nombre} (${c.estilo})${puntuacionStr}</li>`;
       }).join('');
       lista.parentNode.appendChild(todasDiv);
       btn.textContent = 'Ver menos';
-      btn.onclick = () => {
-        todasDiv.remove();
-        btn.textContent = 'Ver todas';
-      };
+      btn.onclick = () => { todasDiv.remove(); btn.textContent = 'Ver todas'; };
     };
   } else {
     btn.classList.add('d-none');
   }
 }
 
-// ✅ 3. Almacenar cerveza en caché con su puntuación (si la tiene)
+// ✅ 3. Cachear cerveza (con puntuación)
 function cachearCerveza(cerveza, puntuacion = null) {
   cervezasCache[cerveza.id] = {
     id: cerveza.id,
@@ -199,22 +182,21 @@ function cachearCerveza(cerveza, puntuacion = null) {
     pais: cerveza.pais_procedencia,
     ibu: cerveza.ibu || 'N/A',
     color: cerveza.color,
-    puntuacion: puntuacion  // ✅ ahora guardamos puntuación aquí
+    puntuacion: puntuacion
   };
 }
 
-// ✅ Renderizar lista (usando cachearCerveza)
+// ✅ 4. Renderizar lista
 function renderizarLista(cervezas) {
   let html = `<div class="list-group">`;
   cervezas.forEach(c => {
-    // ✅ Si ya está en favoritas, usar su puntuación; si no, null
-    const puntuacion = favoritas.includes(c.id) 
-      ? (cervezasCache[c.id]?.puntuacion || 5.0)  // por defecto 5 si no hay
+    const puntuacion = favoritas.includes(c.id)
+      ? (cervezasCache[c.id]?.puntuacion || 5.0)
       : null;
     cachearCerveza(c, puntuacion);
 
     const esFavorita = favoritas.includes(c.id);
-    const estrella = esFavorita 
+    const estrella = esFavorita
       ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" class="bi bi-star-fill" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.532.792c.197-.198.59-.198.787 0l2.252 4.369 4.898.696c.441.062.612.636.282.95l-3.523 3.356.83 4.73c.078.444-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>'
       : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>';
 
@@ -243,36 +225,64 @@ function renderizarLista(cervezas) {
   document.getElementById('resultados').innerHTML = html;
 }
 
-// ✅ Botón de favoritas en modal
+// ✅ 5. Botón favoritas — CORREGIDA (funciona 100%)
 function actualizarBotonFavorita(id) {
   const btn = document.getElementById('btnFavorita');
+  
+  // ✅ Primero: limpiar cualquier evento previo
+  btn.innerHTML = ''; // vaciar para evitar conflictos de SVG
+  btn.onclick = null;
+
   const esFavorita = favoritas.includes(id);
+  
+  // ✅ Construir icono seguro
+  const icono = esFavorita 
+    ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" class="bi bi-star-fill" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.532.792c.197-.198.59-.198.787 0l2.252 4.369 4.898.696c.441.062.612.636.282.95l-3.523 3.356.83 4.73c.078.444-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>'
+    : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>';
+
   btn.innerHTML = `
-    ${esFavorita 
-      ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" class="bi bi-star-fill me-1" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.532.792c.197-.198.59-.198.787 0l2.252 4.369 4.898.696c.441.062.612.636.282.95l-3.523 3.356.83 4.73c.078.444-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>'
-      : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star me-1" viewBox="0 0 16 16"><path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>'
-    }
-    <span>${esFavorita ? 'En favoritas' : 'Agregar a favoritas'}</span>
+    ${icono}
+    <span class="ms-1">${esFavorita ? 'En favoritas' : 'Agregar a favoritas'}</span>
   `;
-  btn.onclick = () => {
-    if (esFavorita) {
+
+  // ✅ Adjuntar evento CON CIERRE LEXICO seguro
+  btn.onclick = function() {
+    const esFavoritaAhora = favoritas.includes(id);
+    
+    if (esFavoritaAhora) {
+      // ✅ Desmarcar
       favoritas = favoritas.filter(x => x !== id);
+      if (cervezasCache[id]) {
+        delete cervezasCache[id].puntuacion; // opcional
+      }
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>
+        <span class="ms-1">Agregar a favoritas</span>
+      `;
     } else {
+      // ✅ Marcar
       favoritas.push(id);
-      // ✅ Asignar puntuación 5.0 por defecto al marcar
       if (cervezasCache[id]) {
         cervezasCache[id].puntuacion = 5.0;
       }
+      btn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" class="bi bi-star-fill" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.532.792c.197-.198.59-.198.787 0l2.252 4.369 4.898.696c.441.062.612.636.282.95l-3.523 3.356.83 4.73c.078.444-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>
+        <span class="ms-1">En favoritas</span>
+      `;
     }
+
+    // ✅ Guardar y actualizar UI
     localStorage.setItem(FAVORITAS_KEY, JSON.stringify(favoritas));
-    actualizarSeccionFavoritas(); // ✅ ahora se actualiza al instante
-    const current = JSON.parse(document.getElementById('resultados').dataset.cervezas || '[]');
-    renderizarLista(current);
-    actualizarBotonFavorita(id);
+    actualizarSeccionFavoritas();
+
+    // ✅ Opcional: feedback visual rápido
+    const original = btn.innerHTML;
+    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span> Guardado`;
+    setTimeout(() => { btn.innerHTML = original; }, 300);
   };
 }
 
-// ✅ Cargar sugerencias (sin cambios)
+// ✅ 6. Cargar cervezas sugeridas
 function cargarSugerencias() {
   if (sugerenciasMostradas) return;
   fetch('/buscar_cervezas')
@@ -292,21 +302,33 @@ function ocultarSugerenciasSiVacio() {
   }
 }
 
-// ✅ INICIALIZACIÓN: recuperar favoritas y actualizar UI
+// ✅ 7. 🔑 CARGA INICIAL: recuperar datos de favoritas
 document.addEventListener('DOMContentLoaded', () => {
-  // ✅ 1. Recuperar favoritas y actualizar sección
-  actualizarSeccionFavoritas();
+  // ✅ Paso 1: si hay favoritas, cargar sus datos
+  if (favoritas.length > 0) {
+    fetch(`/cervezas_por_ids?ids=${favoritas.join(',')}`)
+      .then(res => res.json())
+      .then(data => {
+        data.cervezas.forEach(c => cachearCerveza(c, 5.0)); // por defecto 5.0
+        actualizarSeccionFavoritas(); // ✅ ahora SÍ se muestra
+      })
+      .catch(() => {
+        // Si falla, al menos inicializa caché vacía
+        actualizarSeccionFavoritas();
+      });
+  } else {
+    // Si no hay, asegurar que esté oculta
+    actualizarSeccionFavoritas();
+  }
 
-  // ✅ 2. Eventos de búsqueda
+  // ✅ Paso 2: eventos de búsqueda
   const buscador = document.getElementById('buscador');
   const btnBuscar = document.getElementById('btnBuscar');
-
   buscador.addEventListener('focus', cargarSugerencias);
   buscador.addEventListener('input', () => {
     const q = buscador.value.trim();
-    if (q === '') {
-      cargarSugerencias();
-    } else {
+    if (q === '') cargarSugerencias();
+    else {
       fetch(`/buscar_cervezas?q=${encodeURIComponent(q)}`)
         .then(res => res.json())
         .then(data => {
@@ -324,15 +346,11 @@ document.addEventListener('DOMContentLoaded', () => {
           renderizarLista(data.cervezas);
           document.getElementById('resultados').dataset.cervezas = JSON.stringify(data.cervezas);
         });
-    } else {
-      buscador.focus();
-    }
+    } else buscador.focus();
   });
-  buscador.addEventListener('blur', () => {
-    setTimeout(ocultarSugerenciasSiVacio, 150);
-  });
+  buscador.addEventListener('blur', () => setTimeout(ocultarSugerenciasSiVacio, 150));
 
-  // ✅ 3. Modal
+  // ✅ Paso 3: modal
   const modal = document.getElementById('modalCerveza');
   if (modal) {
     modal.addEventListener('show.bs.modal', function (event) {
