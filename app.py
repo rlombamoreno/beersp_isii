@@ -11,7 +11,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from itsdangerous import URLSafeTimedSerializer
 from dotenv import load_dotenv
-from flask_wtf.csrf import CSRFProtect  # ✅ NUEVO: seguridad CSRF
+from flask_wtf.csrf import CSRFProtect
 
 # ————— CONFIGURACIÓN INICIAL —————
 load_dotenv()
@@ -32,10 +32,8 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'una_clave_secreta_muy_seg
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_dir, "beersp.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# ✅ CSRF: activado por defecto
 csrf = CSRFProtect(app)
 
-# Configuración de correo (mantiene tu lógica de Render)
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
 app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'true').lower() == 'true'
@@ -43,11 +41,10 @@ app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = ("BeerSp 🍻", os.getenv('MAIL_USERNAME'))
 
-# ✅ Seguridad de sesión: cookies seguras
+
 from flask.sessions import SecureCookieSessionInterface
 class CustomSessionInterface(SecureCookieSessionInterface):
     def get_cookie_secure(self, app):
-        # Solo secure en producción (Render)
         return os.getenv('RENDER') is not None
     def get_cookie_samesite(self, app):
         return 'Lax'
@@ -145,7 +142,6 @@ def seed_cervezas():
     """Precarga 12 cervezas españolas reales si la tabla está vacía."""
     if Cerveza.query.count() == 0:
         cervezas_data = [
-            # 🇪🇸 Cervezas artesanales y reconocidas de España
             ("Moritz", "Lager", "España", 4.8, 18, "Dorado claro"),
             ("Estrella Galicia", "Lager", "España", 5.5, 20, "Dorado pálido"),
             ("Mahou Cinco Estrellas", "Lager", "España", 5.5, 22, "Dorado ámbar"),
@@ -224,12 +220,10 @@ def registro():
             return render_template('registro.html', RENDER=os.getenv('RENDER') is not None)
 
         if os.getenv('RENDER'):
-            # ✅ En Render: verificamos automáticamente
             nuevo_usuario.verificado = True
             db.session.commit()
             flash("Registro exitoso. Cuenta verificada automáticamente.", "success")
         else:
-            # En local: enviamos correo
             if enviar_correo_verificacion(correo, nombre_usuario):
                 flash("¡Registro exitoso! Revisa tu correo para verificar tu cuenta.", "success")
             else:
@@ -273,7 +267,6 @@ def login():
         elif not check_password_hash(usuario.contraseña_hash, contraseña):
             flash("Contraseña incorrecta.", "error")
         else:
-            # ✅ Seguro: no guardamos toda la entidad, solo el ID
             session['user_id'] = usuario.id
             flash(f"¡Bienvenido, {usuario.nombre_usuario}!", "success")
             return redirect(url_for('inicio', id=usuario.id))
@@ -285,7 +278,6 @@ def login():
 def olvide_contrasena():
     if request.method == 'POST':
         correo = request.form['correo']
-        # ✅ Seguridad: nunca revelamos si el correo existe
         flash("Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña.", "success")
         return redirect(url_for('login'))
     return render_template('olvide_contrasena.html')
@@ -318,7 +310,6 @@ def restablecer_contrasena(token):
 def buscar_cervezas():
     q = request.args.get('q', '').strip()
     if not q:
-        # ✅ Al cargar: devolver "recomendadas" → top por ABV o aleatorias
         cervezas = Cerveza.query.order_by(db.func.random()).limit(8).all()
     else:
         cervezas = Cerveza.query.filter(
@@ -368,12 +359,9 @@ def cervezas_por_ids():
 @app.route('/inicio/<int:id>')
 def inicio(id):
     usuario = Usuario.query.get_or_404(id)
-
-    # Estadísticas
     degustaciones = Degustacion.query.filter_by(usuario_id=id).count()
     solicitudes_amistad = Amistad.query.filter_by(amigo_id=id, estado='pendiente').count()
 
-    # Amigos activos (últimas degustaciones)
     amigos_ids_1 = db.session.query(Amistad.amigo_id).filter_by(usuario_id=id, estado='aceptado')
     amigos_ids_2 = db.session.query(Amistad.usuario_id).filter_by(amigo_id=id, estado='aceptado')
     amigos_ids = {r[0] for r in amigos_ids_1.union(amigos_ids_2)}
@@ -390,7 +378,6 @@ def inicio(id):
                     'ultima_cerveza': cerveza.nombre
                 })
 
-    # Cervezas favoritas (≥4.0)
     degustaciones_altas = Degustacion.query.filter(
         Degustacion.usuario_id == id,
         Degustacion.puntuacion >= 4.0
@@ -439,7 +426,6 @@ def editar_perfil(id):
     usuario = Usuario.query.get_or_404(id)
 
     if request.method == 'POST':
-        # Protección CSRF ya activa globalmente
 
         nuevo_usuario = request.form['nombre_usuario'].strip()
         if nuevo_usuario != usuario.nombre_usuario:
@@ -454,7 +440,6 @@ def editar_perfil(id):
         usuario.genero = request.form.get('genero') or None
         usuario.presentacion = request.form.get('presentacion') or None
 
-        # ✅ Subida de foto: sin bug de file.read()
         if 'foto' in request.files:
             file = request.files['foto']
             if file and file.filename != '':
@@ -462,7 +447,6 @@ def editar_perfil(id):
                     flash("Tipo de archivo no permitido. Usa JPG, PNG o GIF.", "error")
                     return render_template('editar_perfil.html', usuario=usuario)
 
-                # ✅ Medición segura del tamaño
                 file.seek(0, os.SEEK_END)
                 size = file.tell()
                 file.seek(0)
@@ -523,7 +507,7 @@ def logout():
 # ————— INICIALIZACIÓN —————
 with app.app_context():
     db.create_all()
-    seed_cervezas()  # ✅ Precarga cervezas
+    seed_cervezas()
 
 
 # ————— AUTOABRIR NAVEGADOR (solo en local) —————

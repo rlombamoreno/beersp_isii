@@ -121,19 +121,19 @@
 </div>
 
 <script>
-// ✅ 1. Cargar IDs de favoritas
+//1. Cargar IDs de favoritas
 const FAVORITAS_KEY = 'beersp_favoritas_usuario_{{ usuario.id }}';
 let favoritas = JSON.parse(localStorage.getItem(FAVORITAS_KEY) || '[]');
 const cervezasCache = {};
 let sugerenciasMostradas = false;
 
-// ✅ 2. Función para mostrar favoritas (segura)
+//2. Función para mostrar favoritas (segura)
 function actualizarSeccionFavoritas() {
   const seccion = document.getElementById('seccionFavoritas');
   const lista = document.getElementById('listaFavoritas');
   const btn = document.getElementById('btnVerTodasFavoritas');
 
-  // Solo mostrar si hay datos en caché
+  //Solo mostrar si hay datos en caché
   const disponibles = favoritas.filter(id => cervezasCache[id]);
   if (disponibles.length === 0) {
     seccion.classList.add('d-none');
@@ -172,7 +172,7 @@ function actualizarSeccionFavoritas() {
   }
 }
 
-// ✅ 3. Cachear cerveza (con puntuación)
+// 3. Cachear cerveza (con puntuación)
 function cachearCerveza(cerveza, puntuacion = null) {
   cervezasCache[cerveza.id] = {
     id: cerveza.id,
@@ -186,7 +186,7 @@ function cachearCerveza(cerveza, puntuacion = null) {
   };
 }
 
-// ✅ 4. Renderizar lista
+// 4. Renderizar lista
 function renderizarLista(cervezas) {
   let html = `<div class="list-group">`;
   cervezas.forEach(c => {
@@ -225,17 +225,17 @@ function renderizarLista(cervezas) {
   document.getElementById('resultados').innerHTML = html;
 }
 
-// ✅ 5. Botón favoritas — CORREGIDA (funciona 100%)
+// 5. Botón favoritas — CORREGIDA (funciona 100%)
 function actualizarBotonFavorita(id) {
   const btn = document.getElementById('btnFavorita');
   
-  // ✅ Primero: limpiar cualquier evento previo
+  // Primero: limpiar cualquier evento previo
   btn.innerHTML = ''; // vaciar para evitar conflictos de SVG
   btn.onclick = null;
 
   const esFavorita = favoritas.includes(id);
   
-  // ✅ Construir icono seguro
+  // Construir icono seguro
   const icono = esFavorita 
     ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" class="bi bi-star-fill" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.532.792c.197-.198.59-.198.787 0l2.252 4.369 4.898.696c.441.062.612.636.282.95l-3.523 3.356.83 4.73c.078.444-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>'
     : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>';
@@ -245,12 +245,11 @@ function actualizarBotonFavorita(id) {
     <span class="ms-1">${esFavorita ? 'En favoritas' : 'Agregar a favoritas'}</span>
   `;
 
-  // ✅ Adjuntar evento CON CIERRE LEXICO seguro
+  // Adjuntar evento CON CIERRE LEXICO seguro
   btn.onclick = function() {
     const esFavoritaAhora = favoritas.includes(id);
     
     if (esFavoritaAhora) {
-      // ✅ Desmarcar
       favoritas = favoritas.filter(x => x !== id);
       if (cervezasCache[id]) {
         delete cervezasCache[id].puntuacion; // opcional
@@ -260,7 +259,6 @@ function actualizarBotonFavorita(id) {
         <span class="ms-1">Agregar a favoritas</span>
       `;
     } else {
-      // ✅ Marcar
       favoritas.push(id);
       if (cervezasCache[id]) {
         cervezasCache[id].puntuacion = 5.0;
@@ -271,18 +269,18 @@ function actualizarBotonFavorita(id) {
       `;
     }
 
-    // ✅ Guardar y actualizar UI
+    // Guardar y actualizar UI
     localStorage.setItem(FAVORITAS_KEY, JSON.stringify(favoritas));
     actualizarSeccionFavoritas();
 
-    // ✅ Opcional: feedback visual rápido
+    // Opcional: feedback visual rápido
     const original = btn.innerHTML;
     btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span> Guardado`;
     setTimeout(() => { btn.innerHTML = original; }, 300);
   };
 }
 
-// ✅ 6. Cargar cervezas sugeridas
+// 6. Cargar cervezas sugeridas
 function cargarSugerencias() {
   if (sugerenciasMostradas) return;
   fetch('/buscar_cervezas')
@@ -302,9 +300,9 @@ function ocultarSugerenciasSiVacio() {
   }
 }
 
-// ✅ 7. 🔑 CARGA INICIAL: recuperar datos de favoritas
+// 7. CARGA INICIAL: recuperar datos de favoritas
 document.addEventListener('DOMContentLoaded', () => {
-  // ✅ Paso 1: si hay favoritas, cargar sus datos
+  //  Paso 1: si hay favoritas, cargar sus datos
   if (favoritas.length > 0) {
     fetch(`/cervezas_por_ids?ids=${favoritas.join(',')}`)
       .then(res => res.json())
@@ -321,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     actualizarSeccionFavoritas();
   }
 
-  // ✅ Paso 2: eventos de búsqueda
+  // Paso 2: eventos de búsqueda
   const buscador = document.getElementById('buscador');
   const btnBuscar = document.getElementById('btnBuscar');
   buscador.addEventListener('focus', cargarSugerencias);
@@ -350,7 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   buscador.addEventListener('blur', () => setTimeout(ocultarSugerenciasSiVacio, 150));
 
-  // ✅ Paso 3: modal
+  // Paso 3: modal
   const modal = document.getElementById('modalCerveza');
   if (modal) {
     modal.addEventListener('show.bs.modal', function (event) {
