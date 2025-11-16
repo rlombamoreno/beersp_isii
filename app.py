@@ -41,7 +41,6 @@ app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = ("BeerSp 🍻", os.getenv('MAIL_USERNAME'))
 
-
 from flask.sessions import SecureCookieSessionInterface
 class CustomSessionInterface(SecureCookieSessionInterface):
     def get_cookie_secure(self, app):
@@ -53,7 +52,6 @@ app.session_interface = CustomSessionInterface()
 db = SQLAlchemy(app)
 mail = Mail(app)
 serializer = URLSafeTimedSerializer(app.config['SECRET_KEY'])
-
 
 # ————— MODELOS —————
 class Usuario(db.Model):
@@ -108,7 +106,6 @@ class UsuarioGalardon(db.Model):
     nivel = db.Column(db.Integer, default=1)
     fecha_obtenido = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     __table_args__ = (db.UniqueConstraint('usuario_id', 'galardon_id', name='_usuario_galardon_uc'),)
-
 
 # ————— FUNCIONES AUXILIARES —————
 def es_mayor_edad(fecha_nac):
@@ -166,7 +163,6 @@ def seed_cervezas():
             ))
         db.session.commit()
         print("✅ 12 cervezas españolas reales precargadas.")
-
 
 # ————— RUTAS —————
 @app.route('/')
@@ -234,7 +230,6 @@ def registro():
 
     return render_template('registro.html', RENDER=os.getenv('RENDER') is not None)
 
-
 @app.route('/verificar/<token>')
 def verificar_email(token):
     try:
@@ -251,7 +246,6 @@ def verificar_email(token):
     else:
         flash("Usuario no encontrado.", "error")
     return redirect(url_for('login'))
-
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -273,7 +267,6 @@ def login():
 
     return render_template('login.html')
 
-
 @app.route('/olvide_contrasena', methods=['GET', 'POST'])
 def olvide_contrasena():
     if request.method == 'POST':
@@ -281,7 +274,6 @@ def olvide_contrasena():
         flash("Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña.", "success")
         return redirect(url_for('login'))
     return render_template('olvide_contrasena.html')
-
 
 @app.route('/restablecer/<token>', methods=['GET', 'POST'])
 def restablecer_contrasena(token):
@@ -304,7 +296,6 @@ def restablecer_contrasena(token):
             flash("Tu contraseña ha sido actualizada. Ya puedes iniciar sesión.", "success")
             return redirect(url_for('login'))
     return render_template('restablecer.html', token=token)
-
 
 @app.route('/buscar_cervezas')
 def buscar_cervezas():
@@ -358,7 +349,11 @@ def cervezas_por_ids():
 
 @app.route('/inicio/<int:id>')
 def inicio(id):
-    usuario = Usuario.query.get_or_404(id)
+    usuario = db.session.get(Usuario, id)
+    if not usuario:
+        flash("Usuario no encontrado.", "error")
+        return redirect(url_for('login'))
+    
     degustaciones = Degustacion.query.filter_by(usuario_id=id).count()
     solicitudes_amistad = Amistad.query.filter_by(amigo_id=id, estado='pendiente').count()
 
@@ -368,10 +363,10 @@ def inicio(id):
 
     amigos_activos = []
     for amigo_id in list(amigos_ids)[:5]:
-        amigo = Usuario.query.get(amigo_id)
+        amigo = db.session.get(Usuario, amigo_id)
         ultima_deg = Degustacion.query.filter_by(usuario_id=amigo_id).order_by(Degustacion.fecha.desc()).first()
         if ultima_deg and amigo:
-            cerveza = Cerveza.query.get(ultima_deg.cerveza_id)
+            cerveza = db.session.get(Cerveza, ultima_deg.cerveza_id)
             if cerveza:
                 amigos_activos.append({
                     'nombre_usuario': amigo.nombre_usuario,
@@ -381,11 +376,11 @@ def inicio(id):
     degustaciones_altas = Degustacion.query.filter(
         Degustacion.usuario_id == id,
         Degustacion.puntuacion >= 4.0
-    ).order_by(Degustacion.puntuacion.desc()).limit(6).all()  # hasta 6 para "Ver todas"
+    ).order_by(Degustacion.puntuacion.desc()).limit(6).all()
 
     cervezas_favoritas = []
     for d in degustaciones_altas:
-        c = Cerveza.query.get(d.cerveza_id)
+        c = db.session.get(Cerveza, d.cerveza_id)
         if c:
             cervezas_favoritas.append({
                 'nombre': c.nombre,
@@ -417,13 +412,19 @@ def inicio(id):
 
 @app.route('/perfil/<int:id>')
 def perfil(id):
-    usuario = Usuario.query.get_or_404(id)
+    usuario = db.session.get(Usuario, id)
+    if not usuario:
+        flash("Usuario no encontrado.", "error")
+        return redirect(url_for('login'))
     return render_template('perfil.html', usuario=usuario)
 
 
 @app.route('/perfil/<int:id>/editar', methods=['GET', 'POST'])
 def editar_perfil(id):
-    usuario = Usuario.query.get_or_404(id)
+    usuario = db.session.get(Usuario, id)
+    if not usuario:
+        flash("Usuario no encontrado.", "error")
+        return redirect(url_for('login'))
 
     if request.method == 'POST':
 
@@ -459,7 +460,6 @@ def editar_perfil(id):
                 filepath = os.path.join(static_fotos_dir, filename)
                 file.save(filepath)
 
-                # Borrar foto anterior
                 if usuario.foto and usuario.foto.startswith('user_'):
                     old_path = os.path.join(static_fotos_dir, usuario.foto)
                     if os.path.exists(old_path):
@@ -477,10 +477,13 @@ def editar_perfil(id):
 
     return render_template('editar_perfil.html', usuario=usuario)
 
-
 @app.route('/eliminar_cuenta/<int:id>', methods=['GET', 'POST'])
 def eliminar_cuenta(id):
-    usuario = Usuario.query.get_or_404(id)
+    usuario = db.session.get(Usuario, id)
+    if not usuario:
+        flash("Usuario no encontrado.", "error")
+        return redirect(url_for('login'))
+    
     if request.method == 'POST':
         confirmacion = request.form.get('confirmar')
         if confirmacion == 'si':
@@ -496,19 +499,16 @@ def eliminar_cuenta(id):
             flash("Debes confirmar la eliminación de tu cuenta.", "error")
     return render_template('eliminar_cuenta.html', usuario=usuario)
 
-
 @app.route('/logout')
 def logout():
     session.pop('user_id', None)
     flash("Has cerrado sesión correctamente.", "info")
     return redirect(url_for('login'))
 
-
 # ————— INICIALIZACIÓN —————
 with app.app_context():
     db.create_all()
     seed_cervezas()
-
 
 # ————— AUTOABRIR NAVEGADOR (solo en local) —————
 def abrir_navegador():
