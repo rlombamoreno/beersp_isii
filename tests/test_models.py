@@ -21,7 +21,6 @@ class TestModelos:
     def test_crear_usuario(self, client):
         """Test creacion de usuario basico"""
         with client.application.app_context():
-            # Usar datos únicos para evitar conflictos
             usuario = Usuario(
                 nombre_usuario="usuario_unico_test",
                 correo="unico@test.com",
@@ -66,7 +65,6 @@ class TestModelos:
     def test_relacion_degustacion(self, client):
         """Test relacion entre usuario y degustacion"""
         with client.application.app_context():
-            # Crear usuario dentro del mismo contexto
             usuario = Usuario(
                 nombre_usuario=generar_usuario_unico(),
                 correo=generar_email_unico(),
@@ -77,10 +75,8 @@ class TestModelos:
             db.session.add(usuario)
             db.session.commit()
             
-            # Obtener cerveza existente
             cerveza = Cerveza.query.first()
             
-            # Crear degustacion
             degustacion = Degustacion(
                 usuario_id=usuario.id,
                 cerveza_id=cerveza.id,
@@ -90,11 +86,9 @@ class TestModelos:
             db.session.add(degustacion)
             db.session.commit()
             
-            # Verificar relaciones
             assert degustacion.usuario_id == usuario.id
             assert degustacion.cerveza_id == cerveza.id
             
-            # Verificar que la degustación existe para este usuario
             degustaciones_usuario = Degustacion.query.filter_by(usuario_id=usuario.id).all()
             assert len(degustaciones_usuario) == 1
             assert degustacion in degustaciones_usuario
@@ -102,7 +96,6 @@ class TestModelos:
     def test_amistad_pendiente(self, client):
         """Test creacion de solicitud de amistad"""
         with client.application.app_context():
-            # Crear dos usuarios únicos
             usuario1 = Usuario(
                 nombre_usuario="usuario1_amistad",
                 correo="user1_amistad@test.com",
@@ -117,8 +110,7 @@ class TestModelos:
             )
             db.session.add_all([usuario1, usuario2])
             db.session.commit()
-            
-            # Crear solicitud de amistad
+
             amistad = Amistad(
                 usuario_id=usuario1.id,
                 amigo_id=usuario2.id,
@@ -126,8 +118,7 @@ class TestModelos:
             )
             db.session.add(amistad)
             db.session.commit()
-            
-            # Verificar
+
             amistad_db = Amistad.query.filter_by(usuario_id=usuario1.id, amigo_id=usuario2.id).first()
             assert amistad_db is not None
             assert amistad_db.estado == 'pendiente'
@@ -135,15 +126,12 @@ class TestModelos:
     def test_galardon_usuario(self, client):
         """Test asignacion de galardon a usuario"""
         with client.application.app_context():
-            # Crear usuario único
             usuario = Usuario(
                 nombre_usuario="usuario_galardon",
                 correo="galardon_usuario@test.com",
                 contraseña_hash=generate_password_hash("pass"),
                 fecha_nacimiento=date(1990, 1, 1)
             )
-            
-            # Crear galardon
             galardon = Galardon(
                 nombre="Catador Profesional Test",
                 descripcion="Por probar mas de 50 cervezas diferentes"
@@ -151,8 +139,7 @@ class TestModelos:
             
             db.session.add_all([usuario, galardon])
             db.session.commit()
-            
-            # Asignar galardon a usuario
+
             usuario_galardon = UsuarioGalardon(
                 usuario_id=usuario.id,
                 galardon_id=galardon.id,
@@ -161,12 +148,10 @@ class TestModelos:
             db.session.add(usuario_galardon)
             db.session.commit()
             
-            # Verificar - CORREGIDO: usar join para acceder al nombre del galardón
             ug_db = UsuarioGalardon.query.filter_by(usuario_id=usuario.id).first()
             assert ug_db is not None
             assert ug_db.nivel == 2
             assert ug_db.galardon_id == galardon.id
-            
-            # Para verificar el nombre, necesitamos hacer un join o consultar el galardón por separado
+
             galardon_db = db.session.get(Galardon, ug_db.galardon_id)
             assert galardon_db.nombre == "Catador Profesional Test"

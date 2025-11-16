@@ -10,7 +10,7 @@ class TestRutasPublicas:
     def test_pagina_principal_redirige_a_registro(self, client):
         """Test que la ruta '/' redirige a '/registro'"""
         response = client.get('/')
-        assert response.status_code == 302  # Redirección
+        assert response.status_code == 302
         assert '/registro' in response.location
     
     def test_pagina_registro_get(self, client):
@@ -24,8 +24,8 @@ class TestRutasPublicas:
         """Test que la página de login carga correctamente"""
         response = client.get('/login')
         assert response.status_code == 200
-        assert b'Iniciar sesi' in response.data  # Sin tilde
-        assert b'Contrase' in response.data      # Sin tilde
+        assert b'Iniciar sesi' in response.data
+        assert b'Contrase' in response.data 
     
     def test_registro_usuario_valido(self, client):
         """Test registro exitoso de usuario"""
@@ -39,7 +39,6 @@ class TestRutasPublicas:
         
         assert response.status_code == 200
         
-        # Verificar que el usuario se creó en la base de datos
         with client.application.app_context():
             usuario = Usuario.query.filter_by(nombre_usuario='nuevo_user').first()
             assert usuario is not None
@@ -52,13 +51,12 @@ class TestRutasPublicas:
             'correo': 'menor@test.com',
             'contraseña': 'password123',
             'contraseña2': 'password123',
-            'fecha_nacimiento': '2010-01-01'  # Menor de edad
+            'fecha_nacimiento': '2010-01-01' 
         }, follow_redirects=True)
         
         assert response.status_code == 200
         assert b'mayor de 18' in response.data.lower()
         
-        # Verificar que NO se creó el usuario
         with client.application.app_context():
             usuario = Usuario.query.filter_by(nombre_usuario='menor_user').first()
             assert usuario is None
@@ -69,7 +67,7 @@ class TestRutasPublicas:
             'nombre_usuario': 'user_test',
             'correo': 'test@test.com',
             'contraseña': 'password123',
-            'contraseña2': 'diferente_password',  # No coinciden
+            'contraseña2': 'diferente_password',
             'fecha_nacimiento': '1990-01-01'
         })
         
@@ -78,7 +76,6 @@ class TestRutasPublicas:
     
     def test_login_exitoso(self, client):
         """Test login exitoso"""
-        # Primero crear un usuario verificado
         with client.application.app_context():
             usuario = Usuario(
                 nombre_usuario="login_test",
@@ -90,14 +87,12 @@ class TestRutasPublicas:
             db.session.add(usuario)
             db.session.commit()
         
-        # Intentar login
         response = client.post('/login', data={
             'nombre_usuario': 'login_test',
             'contraseña': 'mipassword'
         }, follow_redirects=True)
         
         assert response.status_code == 200
-        # Debería redirigir a la página de inicio del usuario
         assert b'inicio' in response.data.lower()
     
     def test_login_usuario_no_verificado(self, client):
@@ -126,22 +121,13 @@ class TestRutasProtegidas:
     
     def test_acceso_inicio_sin_autenticacion(self, client):
         """Test que /inicio redirige sin autenticación"""
-        # Primero verificar qué hace realmente tu app
         response = client.get('/inicio/1', follow_redirects=False)
         
-        # Tu app puede estar:
-        # - Redirigiendo (302) al login
-        # - Mostrando 404 si el usuario no existe
-        # - Mostrando 401/403 si no está autenticado
-        
         if response.status_code == 302:
-            # Si redirige, seguir la redirección
             response = client.get('/inicio/1', follow_redirects=True)
             assert response.status_code == 200
-            # Puede redirigir a login o mostrar error
             assert b'iniciar sesi' in response.data.lower() or b'error' in response.data.lower()
         else:
-            # Si no redirige, puede ser 404 (usuario no existe) u otro código
             assert response.status_code in [404, 401, 403]
     
     def test_acceso_perfil_sin_autenticacion(self, client):
@@ -157,7 +143,6 @@ class TestRutasProtegidas:
     
     def test_acceso_rutas_protegidas_con_autenticacion(self, client):
         """Test que se puede acceder a rutas protegidas con autenticación"""
-        # Crear usuario y autenticarse
         with client.application.app_context():
             usuario = Usuario(
                 nombre_usuario="usuario_autenticado",
@@ -169,13 +154,10 @@ class TestRutasProtegidas:
             db.session.add(usuario)
             db.session.commit()
             
-            # Hacer login (simular sesión)
             with client.session_transaction() as session:
                 session['user_id'] = usuario.id
             
-            # Ahora debería poder acceder
             response = client.get(f'/inicio/{usuario.id}')
-            # Puede ser 200 (éxito) o 404 (si la plantilla no existe)
             assert response.status_code in [200, 404]
             
             response = client.get(f'/perfil/{usuario.id}')
@@ -183,21 +165,18 @@ class TestRutasProtegidas:
     
     def test_buscar_cervezas_endpoint(self, client):
         """Test endpoint de búsqueda de cervezas"""
-        # Búsqueda vacía (debería devolver sugerencias)
         response = client.get('/buscar_cervezas')
         assert response.status_code == 200
         
         data = json.loads(response.data)
         assert 'cervezas' in data
         assert isinstance(data['cervezas'], list)
-        
-        # Búsqueda con término
+    
         response = client.get('/buscar_cervezas?q=IPA')
         assert response.status_code == 200
         
         data = json.loads(response.data)
         assert 'cervezas' in data
-        # Debería encontrar al menos la IPA de prueba
     
     def test_cervezas_por_ids_endpoint(self, client):
         """Test endpoint para obtener cervezas por IDs"""
@@ -224,4 +203,4 @@ class TestRutasProtegidas:
         """Test que la página de olvidé contraseña carga"""
         response = client.get('/olvide_contrasena')
         assert response.status_code == 200
-        assert b'olvidaste tu contrase' in response.data.lower()  # Sin tilde
+        assert b'olvidaste tu contrase' in response.data.lower()

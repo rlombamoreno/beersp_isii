@@ -57,9 +57,3 @@ class TestAutenticacion:
         # Verificar que el hash no es la contraseña en texto plano
         assert hash_result != password
         assert "mi_contrasena_secreta_123" not in hash_result
-    
-    def test_fecha_nacimiento_formato(self):
-        """Test manejo de diferentes formatos de fecha"""
-        # Esta prueba es para verificar que el formulario maneja formatos de fecha
-        # Por ahora es un placeholder
-        pass

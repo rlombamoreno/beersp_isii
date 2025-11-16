@@ -6,7 +6,6 @@ from datetime import date
 import random
 import string
 
-# Agregar el directorio actual al path para importar app
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app import app, db, Usuario, Cerveza, Degustacion, Amistad, Galardon, UsuarioGalardon
@@ -78,11 +77,11 @@ def crear_cervezas_prueba():
         db.session.add(cerveza1)
         db.session.add(cerveza2)
         db.session.commit()
-        print("✅ Cervezas de prueba creadas correctamente")
+        print("Cervezas de prueba creadas correctamente")
         
     except Exception as e:
         db.session.rollback()
-        print(f"❌ Error creando cervezas de prueba: {e}")
+        print(f"Error creando cervezas de prueba: {e}")
         raise
 
 @pytest.fixture
