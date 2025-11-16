@@ -48,7 +48,7 @@ python app.py
 ```
 
 La aplicación estará disponible en `http://127.0.0.1:5000`
-ADEMÁS LA APLICACIÓN ESTA DESPLEGADA EN render.com EN EL SIGUIENTE ENLACE https://beersp-isii.onrender.com
+ADEMÁS LA APLICACIÓN ESTA DESPLEGADA EN render.com EN EL SIGUIENTE ENLACE https://beersp-isii.onrender.com (puede tardar unos minutos si el programa esta en sleep)
 
 **Ejecuión de pruebas**:
 ```bash
