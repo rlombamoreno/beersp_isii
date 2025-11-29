@@ -135,6 +135,43 @@ def enviar_correo_verificacion(correo, nombre_usuario):
         print(f"Error al enviar correo: {e}")
         return False
 
+
+def enviar_correo_restablecimiento(correo):
+    """Envía correo para restablecer contraseña"""
+    if os.getenv('RENDER'):
+        print(f"[RENDER] Simulando envío de restablecimiento para {correo}")
+        return True
+    
+    try:
+        token = serializer.dumps(correo, salt='restablecer-contrasena')
+        enlace = url_for('restablecer_contrasena', token=token, _external=True)
+        
+        from flask_mail import Message
+        msg = Message(
+            subject="Restablece tu contraseña en BeerSp",
+            recipients=[correo],
+            body=f"""Hola,
+
+Has solicitado restablecer tu contraseña en BeerSp.
+
+Haz clic en el siguiente enlace para crear una nueva contraseña:
+{enlace}
+
+Este enlace expirará en 1 hora.
+
+Si no solicitaste este cambio, ignora este mensaje.
+
+¡Saludos!
+El equipo BeerSp 🍻
+"""
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Error al enviar correo de restablecimiento: {e}")
+        return False
+    
+
 def seed_cervezas():
     """Precarga 12 cervezas españolas reales si la tabla está vacía."""
     if Cerveza.query.count() == 0:
@@ -270,9 +307,20 @@ def login():
 @app.route('/olvide_contrasena', methods=['GET', 'POST'])
 def olvide_contrasena():
     if request.method == 'POST':
-        correo = request.form['correo']
-        flash("Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña.", "success")
+        correo = request.form['correo'].strip()
+        usuario = Usuario.query.filter_by(correo=correo).first()
+        
+        if usuario:
+            if enviar_correo_restablecimiento(correo):
+                flash("Se ha enviado un enlace de restablecimiento a tu correo.", "success")
+            else:
+                flash("Error al enviar el correo. Intenta nuevamente.", "error")
+        else:
+            # Por seguridad, no revelamos si el correo existe o no
+            flash("Si tu correo está registrado, recibirás un enlace para restablecer tu contraseña.", "success")
+        
         return redirect(url_for('login'))
+    
     return render_template('olvide_contrasena.html')
 
 @app.route('/restablecer/<token>', methods=['GET', 'POST'])
@@ -283,18 +331,29 @@ def restablecer_contrasena(token):
         flash("El enlace es inválido o ha expirado.", "error")
         return redirect(url_for('olvide_contrasena'))
 
+    usuario = Usuario.query.filter_by(correo=correo).first()
+    if not usuario:
+        flash("Usuario no encontrado.", "error")
+        return redirect(url_for('olvide_contrasena'))
+
     if request.method == 'POST':
         contraseña_nueva = request.form['contraseña_nueva']
         contraseña_confirm = request.form['contraseña_confirm']
+        
         if contraseña_nueva != contraseña_confirm:
             flash("Las contraseñas no coinciden.", "error")
             return render_template('restablecer.html', token=token)
-        usuario = Usuario.query.filter_by(correo=correo).first()
-        if usuario:
-            usuario.contraseña_hash = generate_password_hash(contraseña_nueva)
-            db.session.commit()
-            flash("Tu contraseña ha sido actualizada. Ya puedes iniciar sesión.", "success")
-            return redirect(url_for('login'))
+        
+        if len(contraseña_nueva) < 6:
+            flash("La contraseña debe tener al menos 6 caracteres.", "error")
+            return render_template('restablecer.html', token=token)
+        
+        usuario.contraseña_hash = generate_password_hash(contraseña_nueva)
+        db.session.commit()
+        
+        flash("Tu contraseña ha sido actualizada correctamente. Ya puedes iniciar sesión.", "success")
+        return redirect(url_for('login'))
+    
     return render_template('restablecer.html', token=token)
 
 @app.route('/buscar_cervezas')

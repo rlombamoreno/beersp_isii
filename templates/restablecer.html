@@ -2,18 +2,40 @@
 {% block content %}
 <div class="card p-4">
   <h3 class="text-center mb-4">Nueva contraseña</h3>
+  
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
   <form method="POST">
     {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
     <input type="hidden" name="token" value="{{ token }}">
+    
     <div class="mb-3">
       <label for="contraseña_nueva" class="form-label">Nueva contraseña</label>
-      <input type="password" class="form-control" id="contraseña_nueva" name="contraseña_nueva" required>
+      <input type="password" class="form-control" id="contraseña_nueva" name="contraseña_nueva" 
+             minlength="6" required>
+      <div class="form-text">Mínimo 6 caracteres.</div>
     </div>
+    
     <div class="mb-3">
       <label for="contraseña_confirm" class="form-label">Repetir contraseña</label>
-      <input type="password" class="form-control" id="contraseña_confirm" name="contraseña_confirm" required>
+      <input type="password" class="form-control" id="contraseña_confirm" name="contraseña_confirm" 
+             minlength="6" required>
     </div>
+    
     <button type="submit" class="btn btn-beersp w-100">Actualizar contraseña</button>
   </form>
+  
+  <div class="text-center mt-3">
+    <a href="{{ url_for('login') }}">← Volver al inicio de sesión</a>
+  </div>
 </div>
 {% endblock %}
