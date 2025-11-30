@@ -1,36 +1,19 @@
-<!-- Sin resultados -->
-{% if not cervezas and query %}
-  <div class="text-center py-4">
-    <p class="text-muted">No se encontraron cervezas con "<strong>{{ query }}</strong>".</p>
-    <button class="btn btn-outline-secondary" disabled>
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus me-1" viewBox="0 0 16 16">
-        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
-      </svg>
-      Añadir nueva cerveza (próximamente)
-    </button>
-  </div>
-{% elif not cervezas %}
-  <div class="text-center py-4">
-    <p class="text-muted">Cargando cervezas...</p>
-  </div>
-{% else %}
-  <div class="list-group">
-    {% for c in cervezas %}
-      <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
-         data-bs-toggle="modal" data-bs-target="#modalCerveza"
-         data-id="{{ c.id }}"
-         data-nombre="{{ c.nombre }}"
-         data-estilo="{{ c.estilo }}"
-         data-pais="{{ c.pais_procedencia }}"
-         data-abv="{{ c.porcentaje_alcohol }}"
-         data-ibu="{{ c.ibu or 'N/A' }}"
-         data-color="{{ c.color }}">
-        <div>
-          <strong>{{ c.nombre }}</strong><br>
-          <small class="text-muted">{{ c.estilo }} · {{ c.pais_procedencia }}</small>
-        </div>
-        <span class="badge bg-secondary">{{ c.porcentaje_alcohol }}%</span>
-      </a>
-    {% endfor %}
-  </div>
-{% endif %}
+<div class="list-group">
+  {% for c in cervezas %}
+    <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
+       data-bs-toggle="modal" data-bs-target="#modalCerveza"
+       data-id="{{ c.id }}"
+       data-nombre="{{ c.nombre }}"
+       data-estilo="{{ c.estilo }}"
+       data-pais="{{ c.pais_procedencia }}"
+       data-abv="{{ c.porcentaje_alcohol }}"
+       data-ibu="{{ c.ibu or 'N/A' }}"
+       data-color="{{ c.color }}">
+      <div>
+        <strong>{{ c.nombre }}</strong><br>
+        <small class="text-muted">{{ c.estilo }} · {{ c.pais_procedencia }}</small>
+      </div>
+      <span class="badge bg-secondary">{{ c.porcentaje_alcohol }}%</span>
+    </a>
+  {% endfor %}
+</div>

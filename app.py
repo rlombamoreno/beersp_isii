@@ -388,25 +388,41 @@ def buscar_cervezas():
     q = request.args.get('q', '').strip()
     if not q:
         cervezas = Cerveza.query.order_by(db.func.random()).limit(8).all()
+        # Para búsquedas vacías, no mostramos el botón de añadir
+        return jsonify({
+            "cervezas": [
+                {
+                    "id": c.id,
+                    "nombre": c.nombre,
+                    "estilo": c.estilo,
+                    "pais_procedencia": c.pais_procedencia,
+                    "porcentaje_alcohol": c.porcentaje_alcohol,
+                    "ibu": c.ibu,
+                    "color": c.color
+                } for c in cervezas
+            ],
+            "query": ""  # Query vacía para no mostrar botón de añadir
+        })
     else:
         cervezas = Cerveza.query.filter(
             (Cerveza.nombre.ilike(f"%{q}%")) |
             (Cerveza.estilo.ilike(f"%{q}%"))
         ).limit(10).all()
-    
-    return jsonify({
-        "cervezas": [
-            {
-                "id": c.id,
-                "nombre": c.nombre,
-                "estilo": c.estilo,
-                "pais_procedencia": c.pais_procedencia,
-                "porcentaje_alcohol": c.porcentaje_alcohol,
-                "ibu": c.ibu,
-                "color": c.color
-            } for c in cervezas
-        ]
-    })
+        
+        return jsonify({
+            "cervezas": [
+                {
+                    "id": c.id,
+                    "nombre": c.nombre,
+                    "estilo": c.estilo,
+                    "pais_procedencia": c.pais_procedencia,
+                    "porcentaje_alcohol": c.porcentaje_alcohol,
+                    "ibu": c.ibu,
+                    "color": c.color
+                } for c in cervezas
+            ],
+            "query": q  # Pasar la query para mostrar botón de añadir si no hay resultados
+        })
     
 @app.route('/cervezas_por_ids')
 def cervezas_por_ids():
@@ -631,7 +647,65 @@ def api_local_nuevo():
         print(f"Error creando local: {e}")
         return jsonify({"success": False, "message": "Error interno del servidor"}), 500
     
-
+    
+@app.route('/api/cerveza/nueva', methods=['POST'])
+def api_cerveza_nueva():
+    """Crear nueva cerveza"""
+    if 'user_id' not in session:
+        return jsonify({"success": False, "message": "No autorizado"}), 401
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "Datos no válidos"}), 400
+            
+        nombre = data.get('nombre', '').strip()
+        estilo = data.get('estilo', '').strip()
+        pais_procedencia = data.get('pais_procedencia', '').strip()
+        porcentaje_alcohol = data.get('porcentaje_alcohol')
+        ibu = data.get('ibu')
+        color = data.get('color', '').strip()
+        
+        # Validaciones
+        if not nombre:
+            return jsonify({"success": False, "message": "El nombre es obligatorio"}), 400
+        if not estilo:
+            return jsonify({"success": False, "message": "El estilo es obligatorio"}), 400
+        if not pais_procedencia:
+            return jsonify({"success": False, "message": "El país es obligatorio"}), 400
+        if not porcentaje_alcohol:
+            return jsonify({"success": False, "message": "El porcentaje de alcohol es obligatorio"}), 400
+        
+        # Verificar si ya existe una cerveza con el mismo nombre
+        cerveza_existente = Cerveza.query.filter_by(nombre=nombre).first()
+        if cerveza_existente:
+            return jsonify({"success": False, "message": "Ya existe una cerveza con ese nombre"}), 400
+        
+        # Crear la nueva cerveza
+        nueva_cerveza = Cerveza(
+            nombre=nombre,
+            estilo=estilo,
+            pais_procedencia=pais_procedencia,
+            porcentaje_alcohol=float(porcentaje_alcohol),
+            ibu=int(ibu) if ibu and ibu.isdigit() else None,
+            color=color or None
+        )
+        
+        db.session.add(nueva_cerveza)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "cerveza_id": nueva_cerveza.id,
+            "message": f"¡Cerveza '{nombre}' creada exitosamente!"
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creando cerveza: {e}")
+        return jsonify({"success": False, "message": "Error interno del servidor"}), 500
+    
+    
 @app.route('/api/degustacion/nueva', methods=['POST'])
 def api_degustacion_nueva():
     """Crear nueva degustación"""

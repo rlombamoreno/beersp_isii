@@ -188,7 +188,9 @@ function cargarPaises() {
 function llenarSelectPaises(paises) {
     const selectPaisConsumo = document.getElementById('pais_consumicion');
     const selectPaisLocal = document.querySelector('#formNuevoLocal select[name="pais"]');
+    const selectPaisCerveza = document.getElementById('nuevaCervezaPais');
     
+    // Llenar select de consumo
     if (selectPaisConsumo) {
         selectPaisConsumo.innerHTML = '<option value="">Seleccionar país...</option>';
         paises.forEach(pais => {
@@ -199,6 +201,7 @@ function llenarSelectPaises(paises) {
         });
     }
     
+    // Llenar select de local
     if (selectPaisLocal) {
         selectPaisLocal.innerHTML = '<option value="">Seleccionar país...</option>';
         paises.forEach(pais => {
@@ -212,6 +215,23 @@ function llenarSelectPaises(paises) {
         const opcionEspaña = Array.from(selectPaisLocal.options).find(opt => opt.value === "España");
         if (opcionEspaña) {
             selectPaisLocal.value = "España";
+        }
+    }
+    
+    // Llenar select de cerveza
+    if (selectPaisCerveza) {
+        selectPaisCerveza.innerHTML = '<option value="">Seleccionar país...</option>';
+        paises.forEach(pais => {
+            const option = document.createElement('option');
+            option.value = pais;
+            option.textContent = pais;
+            selectPaisCerveza.appendChild(option);
+        });
+        
+        // Poner España por defecto en el formulario de cerveza
+        const opcionEspaña = Array.from(selectPaisCerveza.options).find(opt => opt.value === "España");
+        if (opcionEspaña) {
+            selectPaisCerveza.value = "España";
         }
     }
 }
@@ -306,8 +326,37 @@ function cachearCerveza(cerveza, puntuacion = null) {
 }
 // --- FIN CACHear ---
 
-// --- RENDERIZAR LISTA ---
-function renderizarLista(cervezas) {
+// --- RENDERIZAR LISTA ACTUALIZADA ---
+function renderizarLista(data) {
+  const { cervezas, query } = data;
+  
+  // Si no hay cervezas Y hay una query (búsqueda específica), mostrar botón de añadir
+  if (!cervezas.length && query) {
+    document.getElementById('resultados').innerHTML = `
+      <div class="text-center py-4">
+        <p class="text-muted">No se encontraron cervezas con "<strong>${query}</strong>".</p>
+        <button class="btn btn-beersp" id="btnAnadirCerveza" data-query="${query}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus me-1" viewBox="0 0 16 16">
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+          </svg>
+          Añadir "${query}" como nueva cerveza
+        </button>
+      </div>
+    `;
+    return;
+  }
+  
+  // Si no hay cervezas y no hay query (carga inicial), mostrar mensaje de carga
+  if (!cervezas.length) {
+    document.getElementById('resultados').innerHTML = `
+      <div class="text-center py-4">
+        <p class="text-muted">Cargando cervezas...</p>
+      </div>
+    `;
+    return;
+  }
+  
+  // Si hay cervezas, renderizar la lista normal
   let html = `<div class="list-group">`;
   cervezas.forEach(c => {
     const puntuacion = favoritasIds.includes(c.id)
@@ -491,7 +540,96 @@ function cargarLocales() {
         });
 }
 
-// --- CARGA INICIAL ---
+// --- SISTEMA PARA AÑADIR NUEVAS CERVEZAS ---
+
+// Función para abrir modal de nueva cerveza
+function abrirModalNuevaCerveza(query) {
+    const modalNuevaCerveza = new bootstrap.Modal(document.getElementById('modalNuevaCerveza'));
+    
+    // Prellenar el nombre con la búsqueda
+    document.getElementById('nuevaCervezaNombre').value = query;
+    
+    // Cargar países si no están cargados
+    if (document.querySelector('#nuevaCervezaPais').options.length <= 1) {
+        cargarPaises().then(paises => {
+            llenarSelectPaises(paises);
+        });
+    }
+    
+    modalNuevaCerveza.show();
+}
+
+// Guardar nueva cerveza
+function guardarNuevaCerveza() {
+    const formData = new FormData(document.getElementById('formNuevaCerveza'));
+    const data = {
+        nombre: formData.get('nombre'),
+        estilo: formData.get('estilo'),
+        pais_procedencia: formData.get('pais_procedencia'),
+        porcentaje_alcohol: formData.get('porcentaje_alcohol'),
+        ibu: formData.get('ibu'),
+        color: formData.get('color')
+    };
+    
+    // Validación básica
+    if (!data.nombre || !data.estilo || !data.pais_procedencia || !data.porcentaje_alcohol) {
+        mostrarNotificacion('Por favor, completa todos los campos obligatorios', 'error');
+        return;
+    }
+    
+    // Agregar CSRF token
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+    
+    if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+    }
+    
+    fetch('/api/cerveza/nueva', {
+        method: 'POST',
+        headers: headers,
+        credentials: 'include',
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (response.status === 401) {
+            mostrarNotificacion('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', 'error');
+            window.location.href = '/login';
+            return;
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (result.success) {
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNuevaCerveza'));
+            modal.hide();
+            
+            // Mostrar mensaje de éxito
+            mostrarNotificacion(result.message, 'success');
+            
+            // Limpiar formulario
+            document.getElementById('formNuevaCerveza').reset();
+            
+            // Opcional: buscar automáticamente la nueva cerveza
+            setTimeout(() => {
+                document.getElementById('buscador').value = data.nombre;
+                document.getElementById('btnBuscar').click();
+            }, 1000);
+            
+        } else {
+            mostrarNotificacion('Error: ' + result.message, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        mostrarNotificacion('Error al guardar la cerveza', 'error');
+    });
+}
+
+// --- CARGA INICIAL ACTUALIZADA ---
 document.addEventListener('DOMContentLoaded', () => {
   // Cargar cervezas favoritas desde el backend para la sección de favoritas
   fetch('/mis_favoritas')
@@ -509,31 +647,52 @@ document.addEventListener('DOMContentLoaded', () => {
   const buscador = document.getElementById('buscador');
   const btnBuscar = document.getElementById('btnBuscar');
 
-  buscador.addEventListener('focus', cargarSugerencias);
+  // Función para cargar sugerencias iniciales
+  function cargarSugerenciasIniciales() {
+    if (sugerenciasMostradas) return;
+    fetch('/buscar_cervezas')
+      .then(res => res.json())
+      .then(data => {
+        renderizarLista(data);
+        sugerenciasMostradas = true;
+      });
+  }
+
+  buscador.addEventListener('focus', cargarSugerenciasIniciales);
   buscador.addEventListener('input', () => {
     const q = buscador.value.trim();
-    if (q === '') cargarSugerencias();
-    else {
+    if (q === '') {
+      cargarSugerenciasIniciales();
+    } else {
       fetch(`/buscar_cervezas?q=${encodeURIComponent(q)}`)
         .then(res => res.json())
         .then(data => {
-          renderizarLista(data.cervezas);
-          document.getElementById('resultados').dataset.cervezas = JSON.stringify(data.cervezas);
+          renderizarLista(data);
         });
     }
   });
+  
   btnBuscar.addEventListener('click', () => {
     const q = buscador.value.trim();
     if (q) {
       fetch(`/buscar_cervezas?q=${encodeURIComponent(q)}`)
         .then(res => res.json())
         .then(data => {
-          renderizarLista(data.cervezas);
-          document.getElementById('resultados').dataset.cervezas = JSON.stringify(data.cervezas);
+          renderizarLista(data);
         });
-    } else buscador.focus();
+    } else {
+      buscador.focus();
+      cargarSugerenciasIniciales();
+    }
   });
-  buscador.addEventListener('blur', () => setTimeout(ocultarSugerenciasSiVacio, 150));
+  
+  buscador.addEventListener('blur', () => setTimeout(() => {
+    const input = document.getElementById('buscador');
+    if (input.value.trim() === '') {
+      document.getElementById('resultados').innerHTML = '';
+      sugerenciasMostradas = false;
+    }
+  }, 150));
 
   const modal = document.getElementById('modalCerveza');
   if (modal) {
@@ -825,26 +984,42 @@ document.addEventListener('DOMContentLoaded', () => {
           modalDegustacion.hide();
       };
   }
+
+  // --- SISTEMA DE NUEVAS CERVEZAS ---
+  
+  // Manejar clic en botón "Añadir nueva cerveza" (usando delegación de eventos)
+  document.addEventListener('click', function(e) {
+    if (e.target.id === 'btnAnadirCerveza' || e.target.closest('#btnAnadirCerveza')) {
+      const button = e.target.id === 'btnAnadirCerveza' ? e.target : e.target.closest('#btnAnadirCerveza');
+      const query = button.getAttribute('data-query');
+      abrirModalNuevaCerveza(query);
+    }
+  });
+  
+  // Botón guardar nueva cerveza
+  const btnGuardarNuevaCerveza = document.getElementById('btnGuardarNuevaCerveza');
+  if (btnGuardarNuevaCerveza) {
+    btnGuardarNuevaCerveza.onclick = guardarNuevaCerveza;
+  }
+  
+  // Botón cancelar nueva cerveza
+  const btnCancelarNuevaCerveza = document.getElementById('btnCancelarNuevaCerveza');
+  if (btnCancelarNuevaCerveza) {
+    btnCancelarNuevaCerveza.onclick = function() {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('modalNuevaCerveza'));
+      modal.hide();
+    };
+  }
+  
+  // Botón cerrar (X) nueva cerveza
+  const btnCerrarNuevaCerveza = document.getElementById('btnCerrarNuevaCerveza');
+  if (btnCerrarNuevaCerveza) {
+    btnCerrarNuevaCerveza.onclick = function() {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('modalNuevaCerveza'));
+      modal.hide();
+    };
+  }
   // --- FIN CARGA INICIAL ---
 });
-
-function cargarSugerencias() {
-  if (sugerenciasMostradas) return;
-  fetch('/buscar_cervezas')
-    .then(res => res.json())
-    .then(data => {
-      renderizarLista(data.cervezas);
-      document.getElementById('resultados').dataset.cervezas = JSON.stringify(data.cervezas);
-      sugerenciasMostradas = true;
-    });
-}
-
-function ocultarSugerenciasSiVacio() {
-  const input = document.getElementById('buscador');
-  if (input.value.trim() === '') {
-    document.getElementById('resultados').innerHTML = '';
-    sugerenciasMostradas = false;
-  }
-}
 </script>
 {% endblock %}
