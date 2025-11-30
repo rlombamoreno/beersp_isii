@@ -1,0 +1,141 @@
+<!-- Modal para registrar degustación -->
+<div class="modal fade" id="modalDegustacion" tabindex="-1" aria-labelledby="modalDegustacionLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalDegustacionLabel">Registrar Degustación</h5>
+        <button type="button" class="btn-close" id="btnCerrarDegustacion" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formDegustacion">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <input type="hidden" id="degustacion_cerveza_id" name="cerveza_id">
+          <input type="hidden" id="degustacion_cerveza_nombre" name="cerveza_nombre">
+          
+          <!-- Información de la cerveza -->
+          <div class="alert alert-info">
+            <strong id="degustacionCervezaNombre"></strong><br>
+            <small id="degustacionCervezaInfo"></small>
+          </div>
+
+          <!-- Puntuación -->
+          <div class="mb-3">
+            <label class="form-label">Puntuación (0-5)</label>
+            <div class="d-flex justify-content-between">
+              {% for i in range(6) %}
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="puntuacion" id="puntuacion{{i}}" value="{{i}}" {% if i == 0 %}checked{% endif %}>
+                <label class="form-check-label" for="puntuacion{{i}}">
+                  {{i}} {% if i > 0 %}⭐{% endif %}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Tamaño -->
+          <div class="mb-3">
+            <label class="form-label">Tamaño</label>
+            <select class="form-select" name="tamaño" id="tamaño">
+              <option value="">Seleccionar...</option>
+              <option value="pinta">Pinta</option>
+              <option value="media pinta">Media pinta</option>
+              <option value="tercio">Tercio</option>
+              <option value="caña">Caña</option>
+              <option value="botella">Botella</option>
+            </select>
+          </div>
+
+          <!-- Formato -->
+          <div class="mb-3">
+            <label class="form-label">Formato</label>
+            <select class="form-select" name="formato" id="formato">
+              <option value="">Seleccionar...</option>
+              <option value="barril">Barril</option>
+              <option value="lata">Lata</option>
+              <option value="botella">Botella</option>
+            </select>
+          </div>
+
+          <!-- Local -->
+          <div class="mb-3">
+            <label class="form-label">Local/Cervecería</label>
+            <select class="form-select" name="local_id" id="local_id">
+              <option value="">Seleccionar local...</option>
+              <!-- Se llenará dinámicamente con JavaScript -->
+            </select>
+            <div class="form-text">
+              <a href="#" id="btnNuevoLocal" data-bs-toggle="modal" data-bs-target="#modalNuevoLocal">+ Añadir nuevo local</a>
+            </div>
+          </div>
+
+          <!-- País de consumo -->
+          <div class="mb-3">
+            <label class="form-label">País donde se consumió</label>
+            <select class="form-select" name="pais_consumicion" id="pais_consumicion">
+              <option value="">Seleccionar país...</option>
+              <!-- Se llenará dinámicamente con JavaScript desde API -->
+            </select>
+          </div>
+
+          <!-- Comentario -->
+          <div class="mb-3">
+            <label class="form-label">Comentario (opcional)</label>
+            <textarea class="form-control" name="comentario" id="comentario" rows="3" 
+                      placeholder="¿Qué te pareció esta cerveza?..." maxlength="500"></textarea>
+            <div class="form-text d-flex justify-content-between">
+              <span>Comparte tu experiencia</span>
+              <span class="text-muted"><span id="contadorComentario">0</span>/500</span>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnCancelarDegustacion">Cancelar</button>
+        <button type="button" class="btn btn-beersp" id="btnGuardarDegustacion">Guardar Degustación</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal para nuevo local -->
+<div class="modal fade" id="modalNuevoLocal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Añadir Nuevo Local</h5>
+        <button type="button" class="btn-close" id="btnCerrarLocal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="formNuevoLocal">
+          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
+          <div class="mb-3">
+            <label class="form-label">Nombre del local *</label>
+            <input type="text" class="form-control" name="nombre" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Dirección</label>
+            <input type="text" class="form-control" name="direccion" placeholder="Calle, número...">
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Ciudad</label>
+              <input type="text" class="form-control" name="ciudad">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">País</label>
+              <select class="form-select" name="pais">
+                <option value="">Seleccionar país...</option>
+                <!-- Se llenará dinámicamente con JavaScript desde API -->
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btnCancelarLocal">Cancelar</button>
+        <button type="button" class="btn btn-beersp" id="btnGuardarLocal">Guardar Local</button>
+      </div>
+    </div>
+  </div>
+</div>

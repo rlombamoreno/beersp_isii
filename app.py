@@ -77,6 +77,14 @@ class Amistad(db.Model):
     fecha_solicitud = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     __table_args__ = (db.UniqueConstraint('usuario_id', 'amigo_id', name='_amistad_uc'),)
 
+class Favorita(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id', ondelete='CASCADE'), nullable=False)
+    cerveza_id = db.Column(db.Integer, db.ForeignKey('cerveza.id', ondelete='CASCADE'), nullable=False)
+    fecha_agregada = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    usuario = db.relationship('Usuario', backref=db.backref('favoritas', lazy=True, cascade="all, delete-orphan"))
+    cerveza = db.relationship('Cerveza', backref='favoritos')
+
 class Cerveza(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), nullable=False)
@@ -86,14 +94,33 @@ class Cerveza(db.Model):
     ibu = db.Column(db.Integer)  # International Bitterness Units
     color = db.Column(db.String(50))
 
+class Local(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), nullable=False)
+    direccion = db.Column(db.String(200))
+    ciudad = db.Column(db.String(50))
+    pais = db.Column(db.String(50))
+    latitud = db.Column(db.Float)
+    longitud = db.Column(db.Float)
+    me_gusta_count = db.Column(db.Integer, default=0)
+    fecha_creacion = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
 class Degustacion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=False)
     cerveza_id = db.Column(db.Integer, db.ForeignKey('cerveza.id'), nullable=False)
-    puntuacion = db.Column(db.Float)  # 0–5, puede ser NULL
-    fecha = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    local_id = db.Column(db.Integer, db.ForeignKey('local.id'))  # Puede ser NULL
+    puntuacion = db.Column(db.Float)  # 0-5, puede ser NULL
     comentario = db.Column(db.Text)
-
+    fecha = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    tamaño = db.Column(db.String(20))  # pinta, media pinta, tercio
+    formato = db.Column(db.String(20))  # barril, lata, botella
+    pais_consumicion = db.Column(db.String(50))  # dónde se tomó
+    
+    # Relaciones
+    usuario = db.relationship('Usuario', backref=db.backref('degustaciones', lazy=True))
+    cerveza = db.relationship('Cerveza', backref=db.backref('degustaciones', lazy=True))
+    local = db.relationship('Local', backref=db.backref('degustaciones', lazy=True))
 class Galardon(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), unique=True, nullable=False)
@@ -413,7 +440,18 @@ def inicio(id):
         flash("Usuario no encontrado.", "error")
         return redirect(url_for('login'))
     
-    degustaciones = Degustacion.query.filter_by(usuario_id=id).count()
+    # ACTUALIZAR: Contar degustaciones reales
+    degustaciones_count = Degustacion.query.filter_by(usuario_id=id).count()
+    
+    # ACTUALIZAR: Contar locales nuevos (últimos 7 días)
+    from datetime import timedelta
+    una_semana_atras = datetime.now(timezone.utc) - timedelta(days=7)
+    locales_nuevos_count = Degustacion.query.filter(
+        Degustacion.usuario_id == id,
+        Degustacion.fecha >= una_semana_atras,
+        Degustacion.local_id.isnot(None)
+    ).distinct(Degustacion.local_id).count()
+    
     solicitudes_amistad = Amistad.query.filter_by(amigo_id=id, estado='pendiente').count()
 
     amigos_ids_1 = db.session.query(Amistad.amigo_id).filter_by(usuario_id=id, estado='aceptado')
@@ -455,20 +493,217 @@ def inicio(id):
         .limit(5).all()
     galardones = [{'nombre': g.Galardon.nombre, 'nivel': g.UsuarioGalardon.nivel} for g in galardones_db]
 
+    # Cargar IDs de favoritas desde la base de datos
+    favoritas_ids = [f.cerveza_id for f in Favorita.query.filter_by(usuario_id=id).all()]
+
     return render_template(
         'inicio.html',
         usuario=usuario,
         stats={
-            'degustaciones': degustaciones,
-            'locales_nuevos': 0,
+            'degustaciones': degustaciones_count,  # ✅ Ahora cuenta real
+            'locales_nuevos': locales_nuevos_count,  # ✅ Ahora cuenta real
             'solicitudes_amistad': solicitudes_amistad
         },
         amigos_activos=amigos_activos,
         cervezas_favoritas=cervezas_favoritas,
-        galardones=galardones
+        galardones=galardones,
+        favoritas_ids=favoritas_ids
     )
 
 
+@app.route('/toggle_favorita', methods=['POST'])
+@csrf.exempt
+def toggle_favorita():
+    
+    # Verificar sesión
+    if 'user_id' not in session:
+        return jsonify({"success": False, "message": "No autorizado"}), 401
+    
+    
+    # Obtener datos
+    data = request.form if request.form else request.get_json() or {}
+    
+    cerveza_id = data.get('cerveza_id')
+    
+    if not cerveza_id:
+        return jsonify({"success": False, "message": "ID de cerveza no proporcionado"}), 400
+    
+    try:
+        cerveza_id = int(cerveza_id)
+    except:
+        return jsonify({"success": False, "message": "ID de cerveza inválido"}), 400
+    
+    # Lógica de favoritas
+    usuario_id = session['user_id']
+    favorita = Favorita.query.filter_by(usuario_id=usuario_id, cerveza_id=cerveza_id).first()
+
+    if favorita:
+        db.session.delete(favorita)
+        db.session.commit()
+        return jsonify({"success": True, "action": "removed"})
+    else:
+        nueva_favorita = Favorita(usuario_id=usuario_id, cerveza_id=cerveza_id)
+        db.session.add(nueva_favorita)
+        db.session.commit()
+        return jsonify({"success": True, "action": "added"})
+    
+@app.route('/mis_favoritas')
+def mis_favoritas():
+    if 'user_id' not in session:
+        return jsonify({"cervezas": []}), 401
+
+    usuario_id = session['user_id']
+    favoritas_ids = [f.cerveza_id for f in Favorita.query.filter_by(usuario_id=usuario_id).all()]
+    if not favoritas_ids:
+        return jsonify({"cervezas": []})
+
+    cervezas = Cerveza.query.filter(Cerveza.id.in_(favoritas_ids)).all()
+    return jsonify({
+        "cervezas": [
+            {
+                "id": c.id,
+                "nombre": c.nombre,
+                "estilo": c.estilo,
+                "pais_procedencia": c.pais_procedencia,
+                "porcentaje_alcohol": c.porcentaje_alcohol,
+                "ibu": c.ibu,
+                "color": c.color
+            } for c in cervezas
+        ]
+    })
+
+# --- RUTAS PARA DEGUSTACIONES Y LOCALES ---
+
+@app.route('/api/locales')
+def api_locales():
+    """Obtener lista de locales para select"""
+    locales = Local.query.order_by(Local.nombre).all()
+    return jsonify({
+        "locales": [
+            {
+                "id": l.id,
+                "nombre": l.nombre,
+                "direccion": l.direccion,
+                "ciudad": l.ciudad,
+                "pais": l.pais
+            } for l in locales
+        ]
+    })
+
+@app.route('/api/local/nuevo', methods=['POST'])
+def api_local_nuevo():
+    """Crear nuevo local"""
+    if 'user_id' not in session:
+        return jsonify({"success": False, "message": "No autorizado"}), 401
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "Datos no válidos"}), 400
+            
+        nombre = data.get('nombre', '').strip()
+        direccion = data.get('direccion', '').strip()
+        ciudad = data.get('ciudad', '').strip()
+        pais = data.get('pais', '').strip()
+        
+        if not nombre:
+            return jsonify({"success": False, "message": "El nombre es obligatorio"}), 400
+        
+        # Crear el nuevo local
+        nuevo_local = Local(
+            nombre=nombre,
+            direccion=direccion or None,
+            ciudad=ciudad or None,
+            pais=pais or "España"
+        )
+        
+        db.session.add(nuevo_local)
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "local_id": nuevo_local.id,
+            "message": "Local creado exitosamente"
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error creando local: {e}")
+        return jsonify({"success": False, "message": "Error interno del servidor"}), 500
+    
+
+@app.route('/api/degustacion/nueva', methods=['POST'])
+def api_degustacion_nueva():
+    """Crear nueva degustación"""
+    if 'user_id' not in session:
+        return jsonify({"success": False, "message": "No autorizado"}), 401
+    
+    data = request.get_json()
+    cerveza_id = data.get('cerveza_id')
+    puntuacion = data.get('puntuacion')
+    comentario = data.get('comentario', '').strip()
+    tamaño = data.get('tamaño')
+    formato = data.get('formato')
+    local_id = data.get('local_id')
+    pais_consumicion = data.get('pais_consumicion')
+    
+    if not cerveza_id:
+        return jsonify({"success": False, "message": "Cerveza no especificada"}), 400
+    
+    # Verificar que la cerveza existe
+    cerveza = Cerveza.query.get(cerveza_id)
+    if not cerveza:
+        return jsonify({"success": False, "message": "Cerveza no encontrada"}), 404
+    
+    # Verificar que el local existe si se especificó
+    if local_id:
+        local = Local.query.get(local_id)
+        if not local:
+            return jsonify({"success": False, "message": "Local no encontrado"}), 404
+    
+    # Crear la degustación
+    nueva_degustacion = Degustacion(
+        usuario_id=session['user_id'],
+        cerveza_id=cerveza_id,
+        local_id=local_id,
+        puntuacion=float(puntuacion) if puntuacion else None,
+        comentario=comentario or None,
+        tamaño=tamaño or None,
+        formato=formato or None,
+        pais_consumicion=pais_consumicion or None
+    )
+    
+    db.session.add(nueva_degustacion)
+    db.session.commit()
+    
+    return jsonify({
+        "success": True,
+        "degustacion_id": nueva_degustacion.id,
+        "message": "¡Degustación registrada exitosamente!"
+    })
+
+@app.route('/mis_degustaciones/<int:id>')
+def mis_degustaciones(id):
+    """Página para ver todas las degustaciones del usuario"""
+    if 'user_id' not in session or session['user_id'] != id:
+        flash("No autorizado.", "error")
+        return redirect(url_for('login'))
+    
+    usuario = db.session.get(Usuario, id)
+    if not usuario:
+        flash("Usuario no encontrado.", "error")
+        return redirect(url_for('login'))
+    
+    # Obtener degustaciones ordenadas por fecha (más recientes primero)
+    degustaciones = Degustacion.query.filter_by(
+        usuario_id=id
+    ).order_by(Degustacion.fecha.desc()).all()
+    
+    return render_template('mis_degustaciones.html', 
+                         usuario=usuario, 
+                         degustaciones=degustaciones)
+    
+    
 @app.route('/perfil/<int:id>')
 def perfil(id):
     usuario = db.session.get(Usuario, id)
@@ -546,6 +781,9 @@ def eliminar_cuenta(id):
     if request.method == 'POST':
         confirmacion = request.form.get('confirmar')
         if confirmacion == 'si':
+            # --- ELIMINAR FAVORITAS ANTES DE ELIMINAR USUARIO ---
+            Favorita.query.filter_by(usuario_id=id).delete()
+            # --- FIN ELIMINACIÓN ---
             Degustacion.query.filter_by(usuario_id=id).delete()
             Amistad.query.filter((Amistad.usuario_id == id) | (Amistad.amigo_id == id)).delete()
             UsuarioGalardon.query.filter_by(usuario_id=id).delete()

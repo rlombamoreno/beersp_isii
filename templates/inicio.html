@@ -1,15 +1,15 @@
 {% extends "base.html" %}
+
 {% block content %}
 <div class="card p-4">
   <!-- Menú general -->
   <nav class="nav nav-pills nav-fill mb-4">
     <a class="nav-link active" href="{{ url_for('inicio', id=usuario.id) }}">Inicio</a>
+    <a class="nav-link" href="{{ url_for('mis_degustaciones', id=usuario.id) }}">Mis Degustaciones</a>
     <a class="nav-link" href="#">Top Degustaciones</a>
     <a class="nav-link" href="{{ url_for('perfil', id=usuario.id) }}">Mi Perfil</a>
-    <a class="nav-link" href="#">Buscar</a>
     <a class="nav-link" href="{{ url_for('logout') }}">Cerrar sesión</a>
   </nav>
-
   <!-- Panel resumen -->
   <div class="mb-4">
     <h5 class="border-bottom pb-2">Mi perfil</h5>
@@ -38,7 +38,6 @@
       </div>
     {% endif %}
   </div>
-
   <!-- 🔍 Buscador -->
   <div class="mb-4">
     <h5 class="border-bottom pb-2">🔍 Buscar cerveza</h5>
@@ -55,7 +54,6 @@
       <!-- Vacío al inicio -->
     </div>
   </div>
-
   <!-- ✅ Sección de favoritas: ahora persistente REALMENTE -->
   <div id="seccionFavoritas" class="mb-4 d-none">
     <h5 class="border-bottom pb-2 d-flex justify-content-between align-items-center">
@@ -64,7 +62,6 @@
     </h5>
     <ul class="list-unstyled" id="listaFavoritas"></ul>
   </div>
-
   <!-- Amigos / galardones -->
   {% if amigos_activos %}
   <div class="mb-4">
@@ -75,7 +72,6 @@
     <a href="#" class="btn btn-sm btn-outline-secondary">Ver todos</a>
   </div>
   {% endif %}
-
   {% if galardones %}
   <div>
     <h5 class="border-bottom pb-2">Mis últimos galardones</h5>
@@ -91,7 +87,7 @@
   {% endif %}
 </div>
 
-<!-- Modal -->
+<!-- Modal de Cerveza -->
 <div class="modal fade" id="modalCerveza" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -108,7 +104,7 @@
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-outline-warning" id="btnFavorita"></button>
-        <button type="button" class="btn btn-beersp" disabled>
+        <button type="button" class="btn btn-beersp" id="btnRegistrarDegustacion">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cup-straw me-1" viewBox="0 0 16 16">
             <path d="M4.5 4a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 1 0v-7a.5.5 0 0 0-.5-.5z"/>
             <path d="M11.517 3.156L13.5 4.194v1.388l-1.983 1.038A2.5 2.5 0 0 0 10 7.5v4.793l-1.5-1.5A1.5 1.5 0 0 0 6.379 10H3.5a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .293-.459L7.5 1.022V.5a.5.5 0 0 1 1 0v.522l4.217 2.134a.5.5 0 0 1 .291.459z"/>
@@ -120,59 +116,182 @@
   </div>
 </div>
 
+<!-- Incluir modales de degustación -->
+{% include 'modal_degustacion.html' %}
+
 <script>
-//1. Cargar IDs de favoritas
-const FAVORITAS_KEY = 'beersp_favoritas_usuario_{{ usuario.id }}';
-let favoritas = JSON.parse(localStorage.getItem(FAVORITAS_KEY) || '[]');
+// --- CARGA INICIAL: IDs de favoritas desde el backend ---
+const favoritasIds = {{ favoritas_ids | tojson }}; // Recibido del backend
+// --- FIN CARGA ---
 const cervezasCache = {};
 let sugerenciasMostradas = false;
 
-//2. Función para mostrar favoritas (segura)
+// Función para mostrar notificaciones sutiles
+function mostrarNotificacion(mensaje, tipo = 'info') {
+    const alertClass = {
+        'success': 'alert-success',
+        'error': 'alert-danger', 
+        'info': 'alert-info',
+        'warning': 'alert-warning'
+    }[tipo] || 'alert-info';
+    
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 1060; min-width: 300px;';
+    notification.innerHTML = `
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-eliminar después de 3 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 3000);
+}
+
+// --- SISTEMA DE PAÍSES DESDE API ---
+
+// Función para cargar países desde REST Countries API
+function cargarPaises() {
+    console.log("🌍 Cargando países desde API...");
+    return fetch('https://restcountries.com/v3.1/all?fields=name,translations')
+        .then(response => {
+            if (!response.ok) throw new Error('Error al cargar países desde API');
+            return response.json();
+        })
+        .then(data => {
+            const paises = data.map(country => 
+                country.translations?.spa?.common || country.name.common
+            ).sort();
+            
+            console.log(`✅ ${paises.length} países cargados desde API`);
+            return paises;
+        })
+        .catch(error => {
+            console.error('Error cargando países:', error);
+            // Fallback básico si la API falla
+            mostrarNotificacion('Usando lista local de países', 'info');
+            return [
+                "Alemania", "Bélgica", "España", "Francia", "Italia", "Países Bajos",
+                "Portugal", "Reino Unido", "Estados Unidos", "México", "Argentina",
+                "Brasil", "Chile", "Colombia", "Perú", "Austria", "Dinamarca",
+                "Noruega", "Suecia", "Suiza", "República Checa", "Polonia"
+            ];
+        });
+}
+
+// Función para llenar selects de países
+function llenarSelectPaises(paises) {
+    const selectPaisConsumo = document.getElementById('pais_consumicion');
+    const selectPaisLocal = document.querySelector('#formNuevoLocal select[name="pais"]');
+    
+    if (selectPaisConsumo) {
+        selectPaisConsumo.innerHTML = '<option value="">Seleccionar país...</option>';
+        paises.forEach(pais => {
+            const option = document.createElement('option');
+            option.value = pais;
+            option.textContent = pais;
+            selectPaisConsumo.appendChild(option);
+        });
+    }
+    
+    if (selectPaisLocal) {
+        selectPaisLocal.innerHTML = '<option value="">Seleccionar país...</option>';
+        paises.forEach(pais => {
+            const option = document.createElement('option');
+            option.value = pais;
+            option.textContent = pais;
+            selectPaisLocal.appendChild(option);
+        });
+        
+        // Poner España por defecto en el formulario de local
+        const opcionEspaña = Array.from(selectPaisLocal.options).find(opt => opt.value === "España");
+        if (opcionEspaña) {
+            selectPaisLocal.value = "España";
+        }
+    }
+}
+
+// --- ACTUALIZAR SECCIÓN FAVORITAS ---
 function actualizarSeccionFavoritas() {
   const seccion = document.getElementById('seccionFavoritas');
   const lista = document.getElementById('listaFavoritas');
   const btn = document.getElementById('btnVerTodasFavoritas');
 
-  //Solo mostrar si hay datos en caché
-  const disponibles = favoritas.filter(id => cervezasCache[id]);
+  const disponibles = favoritasIds.filter(id => cervezasCache[id]);
+  
   if (disponibles.length === 0) {
     seccion.classList.add('d-none');
     return;
   }
-
+  
   seccion.classList.remove('d-none');
   const paraMostrar = disponibles.slice(0, 3);
-  lista.innerHTML = paraMostrar.map(id => {
+  
+  // Limpiar lista y elementos adicionales
+  lista.innerHTML = '';
+  const todasDiv = document.getElementById('favoritasTodas');
+  if (todasDiv) {
+    todasDiv.remove();
+  }
+
+  // Mostrar primeras 3
+  paraMostrar.forEach(id => {
     const c = cervezasCache[id];
     const puntuacionStr = c.puntuacion !== undefined && c.puntuacion !== null
       ? ` — ⭐ ${parseFloat(c.puntuacion).toFixed(1)}`
       : '';
-    return `<li>${c.nombre} (${c.estilo})${puntuacionStr}</li>`;
-  }).join('');
+    const li = document.createElement('li');
+    li.innerHTML = `${c.nombre} (${c.estilo})${puntuacionStr}`;
+    lista.appendChild(li);
+  });
 
+  // Manejar botón "Ver todas"
   if (disponibles.length > 3) {
     btn.classList.remove('d-none');
+    
+    // Función para mostrar/ocultar todas
     btn.onclick = () => {
-      const todasDiv = document.createElement('div');
-      todasDiv.id = 'favoritasTodas';
-      todasDiv.classList.add('mt-2');
-      todasDiv.innerHTML = disponibles.slice(3).map(id => {
-        const c = cervezasCache[id];
-        const puntuacionStr = c.puntuacion !== undefined && c.puntuacion !== null
-          ? ` — ⭐ ${parseFloat(c.puntuacion).toFixed(1)}`
-          : '';
-        return `<li>${c.nombre} (${c.estilo})${puntuacionStr}</li>`;
-      }).join('');
-      lista.parentNode.appendChild(todasDiv);
-      btn.textContent = 'Ver menos';
-      btn.onclick = () => { todasDiv.remove(); btn.textContent = 'Ver todas'; };
+      const todasDiv = document.getElementById('favoritasTodas');
+      if (todasDiv) {
+        // Si ya está expandido, ocultar
+        todasDiv.remove();
+        btn.textContent = 'Ver todas';
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-outline-secondary');
+      } else {
+        // Si está contraído, expandir
+        const nuevasTodasDiv = document.createElement('div');
+        nuevasTodasDiv.id = 'favoritasTodas';
+        nuevasTodasDiv.classList.add('mt-2');
+        
+        disponibles.slice(3).forEach(id => {
+          const c = cervezasCache[id];
+          const puntuacionStr = c.puntuacion !== undefined && c.puntuacion !== null
+            ? ` — ⭐ ${parseFloat(c.puntuacion).toFixed(1)}`
+            : '';
+          const li = document.createElement('li');
+          li.innerHTML = `${c.nombre} (${c.estilo})${puntuacionStr}`;
+          nuevasTodasDiv.appendChild(li);
+        });
+        
+        lista.parentNode.appendChild(nuevasTodasDiv);
+        btn.textContent = 'Ver menos';
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-secondary');
+      }
     };
   } else {
     btn.classList.add('d-none');
   }
 }
+// --- FIN ACTUALIZAR ---
 
-// 3. Cachear cerveza (con puntuación)
+// --- CACHear Cerveza ---
 function cachearCerveza(cerveza, puntuacion = null) {
   cervezasCache[cerveza.id] = {
     id: cerveza.id,
@@ -185,21 +304,20 @@ function cachearCerveza(cerveza, puntuacion = null) {
     puntuacion: puntuacion
   };
 }
+// --- FIN CACHear ---
 
-// 4. Renderizar lista
+// --- RENDERIZAR LISTA ---
 function renderizarLista(cervezas) {
   let html = `<div class="list-group">`;
   cervezas.forEach(c => {
-    const puntuacion = favoritas.includes(c.id)
+    const puntuacion = favoritasIds.includes(c.id)
       ? (cervezasCache[c.id]?.puntuacion || 5.0)
       : null;
     cachearCerveza(c, puntuacion);
-
-    const esFavorita = favoritas.includes(c.id);
+    const esFavorita = favoritasIds.includes(c.id);
     const estrella = esFavorita
       ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" class="bi bi-star-fill" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.532.792c.197-.198.59-.198.787 0l2.252 4.369 4.898.696c.441.062.612.636.282.95l-3.523 3.356.83 4.73c.078.444-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>'
-      : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>';
-
+      : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.386.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>';
     html += `
       <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center"
          data-bs-toggle="modal" data-bs-target="#modalCerveza"
@@ -224,104 +342,173 @@ function renderizarLista(cervezas) {
   html += `</div>`;
   document.getElementById('resultados').innerHTML = html;
 }
+// --- FIN RENDERIZAR ---
 
-// 5. Botón favoritas — CORREGIDA (funciona 100%)
+// --- ACTUALIZAR BOTON FAVORITA ---
 function actualizarBotonFavorita(id) {
   const btn = document.getElementById('btnFavorita');
-  
-  // Primero: limpiar cualquier evento previo
-  btn.innerHTML = ''; // vaciar para evitar conflictos de SVG
+  btn.innerHTML = '';
   btn.onclick = null;
-
-  const esFavorita = favoritas.includes(id);
+  const esFavorita = favoritasIds.includes(id);
   
-  // Construir icono seguro
-  const icono = esFavorita 
+  const icono = esFavorita
     ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" class="bi bi-star-fill" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.532.792c.197-.198.59-.198.787 0l2.252 4.369 4.898.696c.441.062.612.636.282.95l-3.523 3.356.83 4.73c.078.444-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>'
-    : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>';
-
-  btn.innerHTML = `
-    ${icono}
-    <span class="ms-1">${esFavorita ? 'En favoritas' : 'Agregar a favoritas'}</span>
-  `;
-
-  // Adjuntar evento CON CIERRE LEXICO seguro
+    : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.386.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>';
+  
+  btn.innerHTML = `${icono} <span class="ms-1">${esFavorita ? 'En favoritas' : 'Agregar a favoritas'}</span>`;
+  
   btn.onclick = function() {
-    const esFavoritaAhora = favoritas.includes(id);
+    console.log("Intentando toggle favorita para cerveza ID:", id);
     
-    if (esFavoritaAhora) {
-      favoritas = favoritas.filter(x => x !== id);
-      if (cervezasCache[id]) {
-        delete cervezasCache[id].puntuacion; // opcional
-      }
-      btn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.078.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>
-        <span class="ms-1">Agregar a favoritas</span>
-      `;
-    } else {
-      favoritas.push(id);
-      if (cervezasCache[id]) {
-        cervezasCache[id].puntuacion = 5.0;
-      }
-      btn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" class="bi bi-star-fill" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.532.792c.197-.198.59-.198.787 0l2.252 4.369 4.898.696c.441.062.612.636.282.95l-3.523 3.356.83 4.73c.078.444-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>
-        <span class="ms-1">En favoritas</span>
-      `;
+    // Agregar token CSRF si está disponible
+    const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (csrfToken) {
+      headers['X-CSRFToken'] = csrfToken;
     }
-
-    // Guardar y actualizar UI
-    localStorage.setItem(FAVORITAS_KEY, JSON.stringify(favoritas));
-    actualizarSeccionFavoritas();
-
-    // Opcional: feedback visual rápido
-    const original = btn.innerHTML;
-    btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status"></span> Guardado`;
-    setTimeout(() => { btn.innerHTML = original; }, 300);
+    
+    fetch('/toggle_favorita', {
+      method: 'POST',
+      headers: headers,
+      credentials: 'include',
+      body: JSON.stringify({ cerveza_id: id })
+    })
+    .then(response => {
+      console.log("Respuesta recibida, status:", response.status);
+      if (response.status === 401) {
+        // Sesión expirada
+        mostrarNotificacion('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', 'error');
+        window.location.href = '/login';
+        return Promise.reject('Sesión expirada');
+      }
+      if (!response.ok) {
+        return response.text().then(text => { 
+          throw new Error(`Error ${response.status}: ${text}`); 
+        });
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log("Datos recibidos:", data);
+      if (data.success) {
+        if (data.action === 'added') {
+          // Agregar a favoritas
+          if (!favoritasIds.includes(id)) {
+            favoritasIds.push(id);
+          }
+          btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" class="bi bi-star-fill" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.532.792c.197-.198.59-.198.787 0l2.252 4.369 4.898.696c.441.062.612.636.282.95l-3.523 3.356.83 4.73c.078.444-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg> <span class="ms-1">En favoritas</span>`;
+          
+          if (cervezasCache[id]) {
+            cervezasCache[id].puntuacion = 5.0;
+          }
+          mostrarNotificacion('Cerveza añadida a favoritas', 'success');
+        } else if (data.action === 'removed') {
+          // Remover de favoritas
+          const index = favoritasIds.indexOf(id);
+          if (index > -1) {
+            favoritasIds.splice(index, 1);
+          }
+          btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.386.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg> <span class="ms-1">Agregar a favoritas</span>`;
+          
+          if (cervezasCache[id]) {
+            delete cervezasCache[id].puntuacion;
+          }
+          mostrarNotificacion('Cerveza eliminada de favoritas', 'info');
+        }
+        
+        // Actualizar visualmente en la lista
+        actualizarEstrellaEnLista(id, data.action === 'added');
+        
+        // Actualizar sección de favoritas
+        actualizarSeccionFavoritas();
+        
+      } else {
+        console.error('Error del servidor:', data.message);
+        mostrarNotificacion('Error: ' + data.message, 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error de red o en la solicitud:', error);
+      if (error !== 'Sesión expirada') {
+        mostrarNotificacion('Hubo un problema al actualizar', 'error');
+      }
+    });
   };
 }
 
-// 6. Cargar cervezas sugeridas
-function cargarSugerencias() {
-  if (sugerenciasMostradas) return;
-  fetch('/buscar_cervezas')
+// Función auxiliar para actualizar estrella en lista
+function actualizarEstrellaEnLista(id, esFavorita) {
+  const listaElementos = document.querySelectorAll('#resultados .list-group-item');
+  listaElementos.forEach(el => {
+    if (parseInt(el.getAttribute('data-id')) === id) {
+      const estrellaContainer = el.querySelector('div:last-child');
+      if (estrellaContainer) {
+        const nuevaEstrella = esFavorita
+          ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#FFD700" class="bi bi-star-fill" viewBox="0 0 16 16"><path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.532.792c.197-.198.59-.198.787 0l2.252 4.369 4.898.696c.441.062.612.636.282.95l-3.523 3.356.83 4.73c.078.444-.36.79-.746.592L8 13.187l-4.389 2.256z"/></svg>'
+          : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star" viewBox="0 0 16 16"><path d="M2.866 14.85c-.386.444.36.791.746.593l4.39-2.256 4.389 2.257c.386.198.824-.149.746-.592l-.83-4.73 3.522-3.356c.33-.314.16-.888-.282-.95l-4.898-.696L8.465.792a.513.513 0 0 0-.927 0L5.354 5.12l-4.898.696c-.442.062-.612.636-.283.95l3.523 3.356-.83 4.73z"/></svg>';
+        
+        // Reemplazar solo la estrella, mantener el badge
+        const badge = estrellaContainer.querySelector('.badge');
+        estrellaContainer.innerHTML = badge ? `${badge.outerHTML} ${nuevaEstrella}` : nuevaEstrella;
+      }
+    }
+  });
+}
+
+// --- SISTEMA DE DEGUSTACIONES ---
+
+// Cargar locales al abrir modal de degustación - VERSIÓN MEJORADA
+function cargarLocales() {
+    return fetch('/api/locales')
+        .then(res => {
+            if (!res.ok) {
+                throw new Error(`Error ${res.status} al cargar locales`);
+            }
+            return res.json();
+        })
+        .then(data => {
+            const select = document.getElementById('local_id');
+            if (!select) {
+                console.error("No se encontró el select de locales");
+                return;
+            }
+            
+            select.innerHTML = '<option value="">Seleccionar local...</option>';
+            data.locales.forEach(local => {
+                const option = document.createElement('option');
+                option.value = local.id;
+                option.textContent = `${local.nombre}${local.ciudad ? ` (${local.ciudad})` : ''}`;
+                select.appendChild(option);
+            });
+            console.log("Locales cargados:", data.locales.length);
+        })
+        .catch(err => {
+            console.error('Error cargando locales:', err);
+            mostrarNotificacion('Error al cargar la lista de locales', 'error');
+        });
+}
+
+// --- CARGA INICIAL ---
+document.addEventListener('DOMContentLoaded', () => {
+  // Cargar cervezas favoritas desde el backend para la sección de favoritas
+  fetch('/mis_favoritas')
     .then(res => res.json())
     .then(data => {
-      renderizarLista(data.cervezas);
-      document.getElementById('resultados').dataset.cervezas = JSON.stringify(data.cervezas);
-      sugerenciasMostradas = true;
+      data.cervezas.forEach(c => cachearCerveza(c, 5.0)); // Asignar puntuación de favorita
+      actualizarSeccionFavoritas(); // Mostrar la sección si hay favoritas
+    })
+    .catch(err => {
+      console.error('Error al cargar favoritas iniciales:', err);
+      // Asegurar que la sección esté oculta si falla
+      document.getElementById('seccionFavoritas').classList.add('d-none');
     });
-}
 
-function ocultarSugerenciasSiVacio() {
-  const input = document.getElementById('buscador');
-  if (input.value.trim() === '') {
-    document.getElementById('resultados').innerHTML = '';
-    sugerenciasMostradas = false;
-  }
-}
-
-// 7. CARGA INICIAL: recuperar datos de favoritas
-document.addEventListener('DOMContentLoaded', () => {
-  //  Paso 1: si hay favoritas, cargar sus datos
-  if (favoritas.length > 0) {
-    fetch(`/cervezas_por_ids?ids=${favoritas.join(',')}`)
-      .then(res => res.json())
-      .then(data => {
-        data.cervezas.forEach(c => cachearCerveza(c, 5.0)); // por defecto 5.0
-        actualizarSeccionFavoritas(); // ✅ ahora SÍ se muestra
-      })
-      .catch(() => {
-        // Si falla, al menos inicializa caché vacía
-        actualizarSeccionFavoritas();
-      });
-  } else {
-    // Si no hay, asegurar que esté oculta
-    actualizarSeccionFavoritas();
-  }
-
-  // Paso 2: eventos de búsqueda
   const buscador = document.getElementById('buscador');
   const btnBuscar = document.getElementById('btnBuscar');
+
   buscador.addEventListener('focus', cargarSugerencias);
   buscador.addEventListener('input', () => {
     const q = buscador.value.trim();
@@ -348,7 +535,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   buscador.addEventListener('blur', () => setTimeout(ocultarSugerenciasSiVacio, 150));
 
-  // Paso 3: modal
   const modal = document.getElementById('modalCerveza');
   if (modal) {
     modal.addEventListener('show.bs.modal', function (event) {
@@ -361,8 +547,304 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('modalIBU').textContent = b.getAttribute('data-ibu');
       document.getElementById('modalColor').textContent = b.getAttribute('data-color');
       actualizarBotonFavorita(id);
+      
+      // Guardar ID de cerveza actual para degustación
+      this.setAttribute('data-current-cerveza-id', id);
     });
   }
+
+  // Configurar modal de degustación
+  const modalDegustacion = document.getElementById('modalDegustacion');
+  if (modalDegustacion) {
+    modalDegustacion.addEventListener('show.bs.modal', function() {
+      // Cargar locales y países en paralelo
+      cargarLocales();
+      cargarPaises().then(paises => {
+        llenarSelectPaises(paises);
+      });
+      
+      // Configurar contador de comentario
+      const comentario = document.getElementById('comentario');
+      const contador = document.getElementById('contadorComentario');
+      comentario.addEventListener('input', function() {
+        contador.textContent = this.value.length;
+      });
+    });
+  }
+  
+  // Botón registrar degustación (en modal de cerveza)
+  const btnRegistrarDegustacion = document.getElementById('btnRegistrarDegustacion');
+  if (btnRegistrarDegustacion) {
+    btnRegistrarDegustacion.onclick = function() {
+      const modalCerveza = bootstrap.Modal.getInstance(document.getElementById('modalCerveza'));
+      const modalDegustacion = new bootstrap.Modal(document.getElementById('modalDegustacion'));
+      
+      // Pasar datos de la cerveza al modal de degustación
+      const cervezaId = document.getElementById('modalCerveza').getAttribute('data-current-cerveza-id');
+      const cervezaNombre = document.getElementById('modalTitle').textContent;
+      const cervezaInfo = `${document.getElementById('modalEstilo').textContent} · ${document.getElementById('modalPais').textContent}`;
+      
+      document.getElementById('degustacion_cerveza_id').value = cervezaId;
+      document.getElementById('degustacion_cerveza_nombre').value = cervezaNombre;
+      document.getElementById('degustacionCervezaNombre').textContent = cervezaNombre;
+      document.getElementById('degustacionCervezaInfo').textContent = cervezaInfo;
+      
+      modalCerveza.hide();
+      modalDegustacion.show();
+    };
+  }
+  
+  // Guardar degustación
+  const btnGuardarDegustacion = document.getElementById('btnGuardarDegustacion');
+  if (btnGuardarDegustacion) {
+    btnGuardarDegustacion.onclick = function() {
+      const formData = new FormData(document.getElementById('formDegustacion'));
+      const data = {
+        cerveza_id: formData.get('cerveza_id'),
+        puntuacion: formData.get('puntuacion'),
+        comentario: formData.get('comentario'),
+        tamaño: formData.get('tamaño'),
+        formato: formData.get('formato'),
+        local_id: formData.get('local_id') || null,
+        pais_consumicion: formData.get('pais_consumicion')
+      };
+      
+      // Validación básica
+      if (!data.cerveza_id) {
+        mostrarNotificacion('Error: No se especificó la cerveza', 'error');
+        return;
+      }
+      
+      // Agregar CSRF token si está disponible
+      const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+      
+      fetch('/api/degustacion/nueva', {
+        method: 'POST',
+        headers: headers,
+        credentials: 'include',
+        body: JSON.stringify(data)
+      })
+      .then(response => {
+        if (response.status === 401) {
+          mostrarNotificacion('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', 'error');
+          window.location.href = '/login';
+          return;
+        }
+        return response.json();
+      })
+      .then(result => {
+        if (result.success) {
+          // ✅ Cerrar modal silenciosamente
+          const modal = bootstrap.Modal.getInstance(document.getElementById('modalDegustacion'));
+          modal.hide();
+          
+          // Recargar para actualizar estadísticas
+          setTimeout(() => {
+            location.reload();
+          }, 500);
+        } else {
+          mostrarNotificacion('Error: ' + result.message, 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        mostrarNotificacion('Error al guardar la degustación', 'error');
+      });
+    };
+  }
+  
+  // Guardar nuevo local - VERSIÓN CORREGIDA
+  const btnGuardarLocal = document.getElementById('btnGuardarLocal');
+  if (btnGuardarLocal) {
+    btnGuardarLocal.onclick = function() {
+      console.log("Intentando crear nuevo local...");
+      
+      // Obtener datos del formulario de forma directa
+      const nombre = document.querySelector('#formNuevoLocal input[name="nombre"]').value.trim();
+      const direccion = document.querySelector('#formNuevoLocal input[name="direccion"]').value.trim();
+      const ciudad = document.querySelector('#formNuevoLocal input[name="ciudad"]').value.trim();
+      const pais = document.querySelector('#formNuevoLocal select[name="pais"]').value;
+      
+      console.log("Datos del local:", { nombre, direccion, ciudad, pais });
+      
+      // Validación básica
+      if (!nombre) {
+        mostrarNotificacion('El nombre del local es obligatorio', 'error');
+        return;
+      }
+      
+      const data = {
+        nombre: nombre,
+        direccion: direccion,
+        ciudad: ciudad,
+        pais: pais
+      };
+      
+      console.log("Enviando datos:", data);
+      
+      // Agregar CSRF token
+      const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+      const headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (csrfToken) {
+        headers['X-CSRFToken'] = csrfToken;
+      }
+      
+      // Hacer la petición
+      fetch('/api/local/nuevo', {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(data)
+      })
+      .then(response => {
+        console.log("Respuesta recibida, status:", response.status);
+        if (!response.ok) {
+          throw new Error(`Error HTTP: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(result => {
+        console.log("Resultado:", result);
+        if (result.success) {
+          mostrarNotificacion(result.message, 'success');
+          
+          // Cerrar modal de nuevo local
+          const modalNuevoLocal = bootstrap.Modal.getInstance(document.getElementById('modalNuevoLocal'));
+          modalNuevoLocal.hide();
+          
+          // Recargar lista de locales
+          cargarLocales().then(() => {
+            if (result.local_id) {
+              document.getElementById('local_id').value = result.local_id;
+              console.log("Local seleccionado:", result.local_id);
+            }
+            
+            // ✅ VOLVER AL MODAL DE DEGUSTACIÓN después de un breve delay
+            setTimeout(() => {
+              const modalDegustacion = new bootstrap.Modal(document.getElementById('modalDegustacion'));
+              modalDegustacion.show();
+            }, 400);
+          });
+          
+        } else {
+          mostrarNotificacion(result.message, 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Error en la petición:', error);
+        mostrarNotificacion('Error de conexión: ' + error.message, 'error');
+      });
+    };
+  }
+  
+  // Botón para abrir modal de nuevo local - VERSIÓN MEJORADA
+  const btnNuevoLocal = document.getElementById('btnNuevoLocal');
+  if (btnNuevoLocal) {
+    btnNuevoLocal.onclick = function(e) {
+      e.preventDefault();
+      console.log("Abriendo modal de nuevo local...");
+      
+      const modalDegustacion = bootstrap.Modal.getInstance(document.getElementById('modalDegustacion'));
+      const modalNuevoLocal = new bootstrap.Modal(document.getElementById('modalNuevoLocal'));
+      
+      // Limpiar formulario antes de abrir
+      const form = document.getElementById('formNuevoLocal');
+      if (form) {
+        form.reset();
+      }
+      
+      if (modalDegustacion) {
+        modalDegustacion.hide();
+      }
+      
+      // Pequeño delay para asegurar que se cierra el modal anterior
+      setTimeout(() => {
+        modalNuevoLocal.show();
+      }, 300);
+    };
+  }
+
+  // --- BOTONES DE CANCELAR MEJORADOS ---
+  
+  // Botón cancelar en modal de nuevo local - VERSIÓN CORREGIDA
+  const btnCancelarLocal = document.getElementById('btnCancelarLocal');
+  if (btnCancelarLocal) {
+      btnCancelarLocal.onclick = function() {
+          console.log("Cancelando creación de local...");
+          const modalNuevoLocal = bootstrap.Modal.getInstance(document.getElementById('modalNuevoLocal'));
+          modalNuevoLocal.hide();
+          
+          // ✅ VOLVER AL MODAL DE DEGUSTACIÓN después de cancelar
+          setTimeout(() => {
+              const modalDegustacion = new bootstrap.Modal(document.getElementById('modalDegustacion'));
+              modalDegustacion.show();
+          }, 300);
+      };
+  }
+
+  // Botón cerrar (X) en modal de nuevo local
+  const btnCerrarLocal = document.getElementById('btnCerrarLocal');
+  if (btnCerrarLocal) {
+      btnCerrarLocal.onclick = function() {
+          console.log("Cerrando modal de local...");
+          const modalNuevoLocal = bootstrap.Modal.getInstance(document.getElementById('modalNuevoLocal'));
+          modalNuevoLocal.hide();
+          
+          // ✅ VOLVER AL MODAL DE DEGUSTACIÓN
+          setTimeout(() => {
+              const modalDegustacion = new bootstrap.Modal(document.getElementById('modalDegustacion'));
+              modalDegustacion.show();
+          }, 300);
+      };
+  }
+
+  // Botón cancelar en modal de degustación
+  const btnCancelarDegustacion = document.getElementById('btnCancelarDegustacion');
+  if (btnCancelarDegustacion) {
+      btnCancelarDegustacion.onclick = function() {
+          console.log("Cancelando degustación...");
+          const modalDegustacion = bootstrap.Modal.getInstance(document.getElementById('modalDegustacion'));
+          modalDegustacion.hide();
+      };
+  }
+  // Botón cerrar (X) en modal de degustación
+  const btnCerrarDegustacion = document.querySelector('#modalDegustacion .btn-close');
+  if (btnCerrarDegustacion) {
+      btnCerrarDegustacion.onclick = function() {
+          console.log("Cerrando modal de degustación...");
+          const modalDegustacion = bootstrap.Modal.getInstance(document.getElementById('modalDegustacion'));
+          modalDegustacion.hide();
+      };
+  }
+  // --- FIN CARGA INICIAL ---
 });
+
+function cargarSugerencias() {
+  if (sugerenciasMostradas) return;
+  fetch('/buscar_cervezas')
+    .then(res => res.json())
+    .then(data => {
+      renderizarLista(data.cervezas);
+      document.getElementById('resultados').dataset.cervezas = JSON.stringify(data.cervezas);
+      sugerenciasMostradas = true;
+    });
+}
+
+function ocultarSugerenciasSiVacio() {
+  const input = document.getElementById('buscador');
+  if (input.value.trim() === '') {
+    document.getElementById('resultados').innerHTML = '';
+    sugerenciasMostradas = false;
+  }
+}
 </script>
 {% endblock %}
