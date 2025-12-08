@@ -41,10 +41,13 @@
 
   <!-- Botones -->
   <div class="d-grid gap-2">
-    <a href="{{ url_for('editar_perfil', id=usuario.id) }}" class="btn btn-outline-secondary">Editar perfil</a>
-    <a href="{{ url_for('eliminar_cuenta', id=usuario.id) }}" class="btn btn-outline-danger">Eliminar cuenta</a>
+    <!-- ENLACE CORREGIDO -->
+    <a href="{{ url_for('editar_perfil') }}?user_id={{ user_id }}" class="btn btn-outline-secondary">Editar perfil</a>
+    <!-- ENLACE CORREGIDO -->
+    <a href="{{ url_for('eliminar_cuenta') }}?user_id={{ user_id }}" class="btn btn-outline-danger">Eliminar cuenta</a>
     <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary">Cerrar sesión</a>
-    <a href="{{ url_for('inicio', id=usuario.id) }}" class="btn btn-outline-secondary">← Volver al inicio</a>
+    <!-- ENLACE CORREGIDO -->
+    <a href="{{ url_for('inicio') }}?user_id={{ user_id }}" class="btn btn-outline-secondary">← Volver al inicio</a>
   </div>
 </div>
 {% endblock %}

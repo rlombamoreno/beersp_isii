@@ -1,3 +1,5 @@
+[file name]: editar_perfil.html
+[file content begin]
 {% extends "base.html" %}
 {% block content %}
 <div class="card p-4">
@@ -76,7 +78,8 @@
     <!-- Botón guardar -->
     <button type="submit" class="btn btn-beersp w-100">Guardar cambios</button>
     <div class="text-center mt-3">
-      <a href="{{ url_for('perfil', id=usuario.id) }}" class="text-muted">← Volver al perfil</a>
+      <!-- ENLACE CORREGIDO -->
+      <a href="{{ url_for('mi_perfil') }}?user_id={{ user_id }}" class="text-muted">← Volver al perfil</a>
     </div>
   </form>
 </div>
@@ -89,3 +92,4 @@ fileInput.addEventListener('change', function() {
 });
 </script>
 {% endblock %}
+[file content end]

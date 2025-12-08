@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3>🍻 Top Degustaciones</h3>
+        <a href="{{ url_for('inicio') }}?user_id={{ user_id }}" class="btn btn-outline-secondary">← Volver al inicio</a>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Filtrar por:</h5>
+            <form method="GET" class="row g-3">
+                <div class="col-md-5">
+                    <label for="estilo" class="form-label">Estilo de cerveza</label>
+                    <select class="form-select" id="estilo" name="estilo">
+                        <option value="">Todos los estilos</option>
+                        {% for estilo in estilos %}
+                        <option value="{{ estilo }}" {% if estilo == estilo_filtro %}selected{% endif %}>{{ estilo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label for="pais" class="form-label">País de procedencia</label>
+                    <select class="form-select" id="pais" name="pais">
+                        <option value="">Todos los países</option>
+                        {% for pais in paises %}
+                        <option value="{{ pais }}" {% if pais == pais_filtro %}selected{% endif %}>{{ pais }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <div class="d-grid w-100">
+                        <button type="submit" class="btn btn-beersp">Filtrar</button>
+                    </div>
+                </div>
+            </form>
+            {% if estilo_filtro or pais_filtro %}
+            <div class="mt-3">
+                <small class="text-muted">
+                    Filtro activo: 
+                    {% if estilo_filtro %}<span class="badge bg-secondary">{{ estilo_filtro }}</span>{% endif %}
+                    {% if pais_filtro %}<span class="badge bg-secondary ms-1">{{ pais_filtro }}</span>{% endif %}
+                    <a href="{{ url_for('top_degustaciones') }}?user_id={{ user_id }}" class="ms-2">Limpiar filtros</a>
+                </small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Tabla de ranking -->
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead class="table-light">
+                <tr>
+                    <th scope="col">#</th>
+                    <th scope="col">Cerveza</th>
+                    <th scope="col">Estilo</th>
+                    <th scope="col">País</th>
+                    <th scope="col">Alcohol</th>
+                    <th scope="col">Puntuación</th>
+                    <th scope="col">Valoraciones</th>
+                    <th scope="col">Última</th>
+                    <th scope="col">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cerveza in cervezas %}
+                <tr>
+                    <td class="fw-bold">{{ loop.index }}</td>
+                    <td>
+                        <strong>{{ cerveza.nombre }}</strong>
+                        {% if cerveza.color %}
+                        <br><small class="text-muted">{{ cerveza.color }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ cerveza.estilo }}</td>
+                    <td>{{ cerveza.pais }}</td>
+                    <td>{{ cerveza.alcohol }}%</td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">⭐ {{ cerveza.puntuacion_promedio }}</span>
+                            <div class="progress" style="width: 80px; height: 8px;">
+                                <div class="progress-bar bg-warning" role="progressbar" 
+                                     style="width: {{ (cerveza.puntuacion_promedio / 5) * 100 }}%">
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge bg-secondary">{{ cerveza.num_valoraciones }}</span>
+                        {% if cerveza.num_valoraciones == 1 %}
+                        <small class="text-muted">vez</small>
+                        {% else %}
+                        <small class="text-muted">veces</small>
+                        {% endif %}
+                    </td>
+                    <td><small class="text-muted">{{ cerveza.ultima_valoracion }}</small></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-secondary ver-detalles" 
+                                data-id="{{ cerveza.id }}"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#modalDetalles">
+                            Detalles
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center py-4">
+                        <div class="text-muted">
+                            <h5>No hay degustaciones aún</h5>
+                            <p>¡Sé el primero en valorar una cerveza!</p>
+                            <a href="{{ url_for('inicio') }}?user_id={{ user_id }}" class="btn btn-beersp">Buscar cervezas</a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Info estadística -->
+    {% if cervezas %}
+    <div class="card mt-4">
+        <div class="card-body">
+            <h6>📊 Estadísticas del ranking:</h6>
+            <div class="row text-center">
+                <div class="col">
+                    <small class="text-muted">Cervezas en ranking</small>
+                    <h5>{{ cervezas|length }}</h5>
+                </div>
+                <div class="col">
+                    <small class="text-muted">Mejor puntuación</small>
+                    <h5>⭐ {{ cervezas[0].puntuacion_promedio if cervezas else 0 }}</h5>
+                </div>
+                <div class="col">
+                    <small class="text-muted">Más valorada</small>
+                    <h5>{{ cervezas[0].nombre if cervezas else 'N/A' }}</h5>
+                </div>
+                <div class="col">
+                    <small class="text-muted">Más votada</small>
+                    <h5>
+                        {% set mas_votada = cervezas|sort(attribute='num_valoraciones', reverse=true)|first %}
+                        {{ mas_votada.nombre if mas_votada else 'N/A' }}
+                    </h5>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal para detalles -->
+<div class="modal fade" id="modalDetalles" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalles de la cerveza</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detallesContenido">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-warning" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando detalles...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-beersp" id="btnDegustarDesdeTop">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-cup-straw me-1" viewBox="0 0 16 16">
+                        <path d="M4.5 4a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 1 0v-7a.5.5 0 0 0-.5-.5z"/>
+                        <path d="M11.517 3.156L13.5 4.194v1.388l-1.983 1.038A2.5 2.5 0 0 0 10 7.5v4.793l-1.5-1.5A1.5 1.5 0 0 0 6.379 10H3.5a.5.5 0 0 1-.5-.5v-7a.5.5 0 0 1 .293-.459L7.5 1.022V.5a.5.5 0 0 1 1 0v.522l4.217 2.134a.5.5 0 0 1 .291.459z"/>
+                    </svg>
+                    Registrar degustación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table-hover tbody tr:hover {
+    background-color: rgba(212, 160, 23, 0.1);
+}
+.progress {
+    background-color: #e9ecef;
+}
+.ver-detalles:hover {
+    background-color: #d4a017;
+    border-color: #d4a017;
+    color: white;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let cervezaActualId = null;
+    
+    // Manejar clic en "Detalles"
+    document.querySelectorAll('.ver-detalles').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const cervezaId = this.getAttribute('data-id');
+            cervezaActualId = cervezaId;
+            cargarDetallesCerveza(cervezaId);
+        });
+    });
+    
+    // Cargar detalles de la cerveza
+    function cargarDetallesCerveza(id) {
+        const contenido = document.getElementById('detallesContenido');
+        contenido.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-warning" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2">Cargando detalles...</p>
+            </div>
+        `;
+        
+        fetch(`/api/cerveza/${id}/detalle`)
+            .then(response => {
+                if (!response.ok) throw new Error('Error en la respuesta');
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    const c = data.cerveza;
+                    renderizarDetalles(c);
+                } else {
+                    contenido.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error: ${data.message}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                contenido.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error al cargar los detalles. Intenta nuevamente.
+                    </div>
+                `;
+            });
+    }
+    
+    // Renderizar detalles en el modal
+    function renderizarDetalles(cerveza) {
+        const contenido = document.getElementById('detallesContenido');
+        
+        let estrellas = '';
+        if (cerveza.puntuacion_promedio) {
+            for (let i = 1; i <= 5; i++) {
+                if (i <= Math.floor(cerveza.puntuacion_promedio)) {
+                    estrellas += '⭐';
+                } else {
+                    estrellas += '☆';
+                }
+            }
+        }
+        
+        contenido.innerHTML = `
+            <div class="row">
+                <div class="col-md-8">
+                    <h4>${cerveza.nombre}</h4>
+                    <p class="text-muted">${cerveza.estilo} · ${cerveza.pais}</p>
+                    
+                    <div class="row mt-4">
+                        <div class="col-6">
+                            <p><strong>🍺 Alcohol:</strong> ${cerveza.alcohol}% ABV</p>
+                            <p><strong>🎨 Color:</strong> ${cerveza.color || 'No especificado'}</p>
+                        </div>
+                        <div class="col-6">
+                            <p><strong>😖 IBU (Amargor):</strong> ${cerveza.ibu || 'N/A'}</p>
+                        </div>
+                    </div>
+                    
+                    ${cerveza.comentario_reciente ? `
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <strong>💬 Último comentario:</strong>
+                        <p class="mb-0 mt-1">"${cerveza.comentario_reciente}"</p>
+                    </div>
+                    ` : ''}
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">📊 Estadísticas</h5>
+                            
+                            ${cerveza.puntuacion_promedio ? `
+                            <div class="mb-3">
+                                <h2 class="text-warning">⭐ ${cerveza.puntuacion_promedio.toFixed(2)}</h2>
+                                <div class="mb-2">${estrellas}</div>
+                                <small>Puntuación promedio</small>
+                            </div>
+                            ` : ''}
+                            
+                            <div class="mb-3">
+                                <h4>${cerveza.total_valoraciones}</h4>
+                                <small>Valoraciones totales</small>
+                            </div>
+                            
+                            ${cerveza.primera_degustacion ? `
+                            <div>
+                                <p><strong>Primera degustación:</strong><br>${cerveza.primera_degustacion}</p>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Botón para registrar degustación desde el modal
+    document.getElementById('btnDegustarDesdeTop').addEventListener('click', function() {
+        if (cervezaActualId) {
+            // Cerrar modal actual
+            const modalDetalles = bootstrap.Modal.getInstance(document.getElementById('modalDetalles'));
+            modalDetalles.hide();
+            
+            // Buscar la cerveza en la lista principal y abrir modal de degustación
+            setTimeout(() => {
+                // Aquí podrías redirigir a la página de inicio con la cerveza seleccionada
+                // o implementar un sistema para abrir directamente el modal de degustación
+                window.location.href = `{{ url_for('inicio') }}?user_id={{ user_id }}&buscar=${encodeURIComponent(cervezaActualId)}`;
+            }, 300);
+        }
+    });
+    
+    // Actualizar título del modal cuando se muestra
+    const modalDetalles = document.getElementById('modalDetalles');
+    modalDetalles.addEventListener('show.bs.modal', function() {
+        document.querySelector('#modalDetalles .modal-title').textContent = 'Detalles de la cerveza';
+    });
+});
+</script>
+{% endblock %}

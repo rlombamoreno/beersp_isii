@@ -95,5 +95,30 @@
       }
     });
   </script>
+  <script>
+  // Agregar user_id a todos los enlaces automáticamente
+  document.addEventListener('DOMContentLoaded', function() {
+      // Obtener user_id de la URL actual
+      const urlParams = new URLSearchParams(window.location.search);
+      const userId = urlParams.get('user_id');
+      
+      if (userId) {
+          // Añadir user_id a todos los enlaces que no lo tengan
+          document.querySelectorAll('a[href^="/"]').forEach(link => {
+              const href = link.getAttribute('href');
+              // Solo si es un enlace interno y no es logout/login/registro
+              if (href && 
+                  !href.includes('logout') && 
+                  !href.includes('login') && 
+                  !href.includes('registro') &&
+                  !href.includes('?user_id=')) {
+                  
+                  const separator = href.includes('?') ? '&' : '?';
+                  link.href = href + separator + 'user_id=' + userId;
+              }
+          });
+      }
+  });
+  </script>
 </body>
 </html>

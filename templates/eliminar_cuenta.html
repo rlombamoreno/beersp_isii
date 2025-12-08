@@ -1,3 +1,5 @@
+[file name]: eliminar_cuenta.html
+[file content begin]
 {% extends "base.html" %}
 {% block content %}
 <div class="card p-4">
@@ -16,7 +18,9 @@
       </label>
     </div>
     <button type="submit" class="btn btn-danger w-100">Eliminar cuenta</button>
-    <a href="{{ url_for('perfil', id=usuario.id) }}" class="btn btn-outline-secondary mt-2">← Volver al perfil</a>
+    <!-- ENLACE CORREGIDO -->
+    <a href="{{ url_for('mi_perfil') }}?user_id={{ user_id }}" class="btn btn-outline-secondary mt-2">← Volver al perfil</a>
   </form>
 </div>
 {% endblock %}
+[file content end]

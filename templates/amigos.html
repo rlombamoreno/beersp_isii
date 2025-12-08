@@ -1,0 +1,1216 @@
+[file name]: amigos.html
+[file content begin]
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card p-4">
+    <!-- Menú de navegación -->
+    <ul class="nav nav-tabs mb-4" id="amigosTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="buscar-tab" data-bs-toggle="tab" data-bs-target="#buscar" type="button">
+                🔍 Buscar usuarios
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="solicitudes-tab" data-bs-toggle="tab" data-bs-target="#solicitudes" type="button">
+                📩 Solicitudes <span id="badgeSolicitudes" class="badge bg-danger d-none">0</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="amigos-tab" data-bs-toggle="tab" data-bs-target="#amigos" type="button">
+                👥 Mis amigos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="actividades-tab" data-bs-toggle="tab" data-bs-target="#actividades" type="button">
+                📝 Actividades
+            </button>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="amigosTabsContent">
+        <!-- TAB 1: Buscar usuarios -->
+        <div class="tab-pane fade show active" id="buscar" role="tabpanel">
+            <div class="mb-4">
+                <h5>Buscar usuarios</h5>
+                <p class="text-muted">Busca por nombre de usuario o email</p>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="inputBuscarUsuarios" 
+                           placeholder="Ej: cervecero23, maria@gmail.com...">
+                    <button class="btn btn-beersp" id="btnBuscarUsuarios">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="resultadosBusqueda" class="mt-3">
+                <div class="text-center py-4 text-muted">
+                    <p>Ingresa un término de búsqueda para encontrar usuarios</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TAB 2: Solicitudes -->
+        <div class="tab-pane fade" id="solicitudes" role="tabpanel">
+            <h5>Solicitudes de amistad</h5>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <h6 class="border-bottom pb-2">📨 Recibidas</h6>
+                    <div id="solicitudesRecibidas">
+                        <div class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-warning" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Cargando solicitudes...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <h6 class="border-bottom pb-2">📤 Enviadas</h6>
+                    <div id="solicitudesEnviadas">
+                        <div class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-warning" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Cargando solicitudes...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TAB 3: Mis amigos -->
+        <div class="tab-pane fade" id="amigos" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Mis amigos</h5>
+                <span id="contadorAmigos" class="badge bg-secondary">...</span>
+            </div>
+            
+            <div id="listaAmigos">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-warning" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando lista de amigos...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TAB 4: Actividades -->
+        <div class="tab-pane fade" id="actividades" role="tabpanel">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>📝 Actividades recientes de amigos</h5>
+                <div>
+                    <span id="contadorActividades" class="badge bg-secondary">...</span>
+                    <button class="btn btn-sm btn-outline-beersp ms-2" id="btnVerTodasActividades" style="display:none;">
+                        Ver todas
+                    </button>
+                </div>
+            </div>
+            <p class="text-muted mb-3">Últimas degustaciones de tus amigos</p>
+            
+            <div id="listaActividades">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-warning" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando actividades...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Botón volver -->
+    <div class="text-center mt-4">
+        <a href="{{ url_for('inicio') }}?user_id={{ user_id }}" class="btn btn-outline-secondary">← Volver al inicio</a>
+    </div>
+</div>
+
+<!-- Modal para ver perfil -->
+<div class="modal fade" id="modalPerfilAmigo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Perfil de usuario</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalPerfilContenido">
+                <!-- Se llenará con JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para ver degustación -->
+<div class="modal fade" id="modalDegustacionAmigo" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Degustación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalDegustacionContenido">
+                <!-- Se llenará con JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Templates para JavaScript -->
+<template id="templateUsuario">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                    <img src="" class="rounded-circle img-usuario" width="50" height="50" style="object-fit:cover;">
+                </div>
+                <div class="flex-grow-1 ms-3">
+                    <h6 class="mb-0 nombre-usuario"></h6>
+                    <small class="text-muted ubicacion-usuario"></small>
+                </div>
+                <div class="flex-shrink-0">
+                    <button class="btn btn-sm btn-action-amistad"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="templateSolicitud">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0">
+                    <img src="" class="rounded-circle img-usuario" width="50" height="50" style="object-fit:cover;">
+                </div>
+                <div class="flex-grow-1 ms-3">
+                    <h6 class="mb-0 nombre-usuario"></h6>
+                    <small class="text-muted fecha-solicitud"></small>
+                </div>
+                <div class="flex-shrink-0 btn-group-solicitud">
+                    <!-- Botones dinámicos -->
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="templateAmigo">
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="d-flex align-items-start">
+                <div class="flex-shrink-0">
+                    <img src="" class="rounded-circle img-usuario" width="60" height="60" style="object-fit:cover;">
+                </div>
+                <div class="flex-grow-1 ms-3">
+                    <h6 class="mb-0 nombre-usuario"></h6>
+                    <p class="text-muted mb-1 presentacion-usuario"></p>
+                    
+                    <div class="actividad-reciente mt-2">
+                        <!-- Actividad dinámica -->
+                    </div>
+                    
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-secondary btn-ver-perfil" data-id="">Ver perfil</button>
+                        <button class="btn btn-sm btn-outline-beersp btn-ver-actividad" data-id="">Ver actividad</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<template id="templateActividad">
+    <div class="card mb-3 actividad-card">
+        <div class="card-body">
+            <div class="d-flex align-items-start">
+                <div class="flex-shrink-0">
+                    <img src="" class="rounded-circle img-usuario" width="50" height="50" style="object-fit:cover;">
+                </div>
+                <div class="flex-grow-1 ms-3">
+                    <div class="d-flex justify-content-between">
+                        <h6 class="mb-0">
+                            <a href="#" class="text-decoration-none nombre-usuario"></a>
+                            <small class="text-muted"> degustó</small>
+                        </h6>
+                        <small class="text-muted fecha-actividad"></small>
+                    </div>
+                    
+                    <div class="mt-2">
+                        <h5 class="mb-1 nombre-cerveza"></h5>
+                        <p class="text-muted mb-1 info-cerveza"></p>
+                        
+                        <div class="puntuacion-actividad mb-2"></div>
+                        
+                        <p class="mb-2 comentario-actividad"></p>
+                        
+                        <div class="local-actividad mb-3"></div>
+                        
+                        <div class="comentarios-actividad"></div>
+                        
+                        <form class="form-comentario mt-3" style="display:none;">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="Escribe un comentario..." required>
+                                <button class="btn btn-beersp" type="submit">Enviar</button>
+                            </div>
+                        </form>
+                        
+                        <div class="mt-2">
+                            <a href="#" class="btn-link-comentar text-decoration-none small">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-chat me-1" viewBox="0 0 16 16">
+                                    <path d="M2.678 11.894a1 1 0 0 1 .287.801 10.97 10.97 0 0 1-.398 2c1.395-.323 2.247-.697 2.634-.893a1 1 0 0 1 .71-.074A8.06 8.06 0 0 0 8 14c3.996 0 7-2.807 7-6 0-3.192-3.004-6-7-6S1 4.808 1 8c0 1.468.617 2.83 1.678 3.894zm-.493 3.905a21.682 21.682 0 0 1-.713.129c-.2.032-.352-.176-.273-.362a9.68 9.68 0 0 0 .244-.637l.003-.01c.248-.72.45-1.548.524-2.319C.743 11.37 0 9.76 0 8c0-3.866 3.582-7 8-7s8 3.134 8 7-3.582 7-8 7a9.06 9.06 0 0 1-2.347-.306c-.52.263-1.639.742-3.468 1.105z"/>
+                                </svg>
+                                Comentar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<style>
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.nav-tabs .nav-link {
+    color: #6c757d;
+    font-weight: 500;
+}
+.nav-tabs .nav-link.active {
+    color: #d4a017;
+    border-bottom: 2px solid #d4a017;
+}
+.btn-action-amistad {
+    min-width: 100px;
+}
+.actividad-card {
+    border-left: 4px solid #d4a017;
+}
+.btn-link-comentar:hover {
+    color: #d4a017;
+}
+/* Mejoras para actividades */
+#contadorActividades {
+    font-size: 0.9rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.actividad-card {
+    border-left: 4px solid #d4a017;
+    transition: transform 0.2s;
+}
+
+.actividad-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.comentarios-actividad {
+    max-height: 200px;
+    overflow-y: auto;
+    padding-right: 10px;
+}
+
+.comentarios-actividad::-webkit-scrollbar {
+    width: 5px;
+}
+
+.comentarios-actividad::-webkit-scrollbar-thumb {
+    background-color: #d4a017;
+    border-radius: 10px;
+}
+
+.btn-outline-beersp {
+    color: #d4a017;
+    border-color: #d4a017;
+}
+
+.btn-outline-beersp:hover {
+    background-color: #d4a017;
+    border-color: #d4a017;
+    color: white;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ✅ Usamos el usuario pasado desde Flask
+    const usuarioId = {{ usuario.id }};
+    let amigosCache = {};
+    let actividadesCache = {};
+    
+    console.log(`👤 Usuario actual ID: ${usuarioId}`);
+    
+    // --- FUNCIONES AUXILIARES ---
+    
+    function mostrarNotificacion(mensaje, tipo = 'info') {
+        const alertClass = {
+            'success': 'alert-success',
+            'error': 'alert-danger', 
+            'info': 'alert-info',
+            'warning': 'alert-warning'
+        }[tipo] || 'alert-info';
+        
+        const notification = document.createElement('div');
+        notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+        notification.style.cssText = 'top: 20px; right: 20px; z-index: 1060; min-width: 300px;';
+        notification.innerHTML = `
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 3000);
+    }
+    
+    function obtenerFotoPerfil(usuario) {
+        if (usuario.foto) {
+            return `/static/fotos/${usuario.foto}`;
+        } else {
+            return `https://ui-avatars.com/api/?name=${encodeURIComponent(usuario.nombre_usuario)}&background=random`;
+        }
+    }
+    
+    // --- BUSCAR USUARIOS ---
+    
+    const inputBuscar = document.getElementById('inputBuscarUsuarios');
+    const btnBuscar = document.getElementById('btnBuscarUsuarios');
+    const resultadosDiv = document.getElementById('resultadosBusqueda');
+    
+    function buscarUsuarios() {
+        const query = inputBuscar.value.trim();
+        if (query.length < 2) {
+            resultadosDiv.innerHTML = `
+                <div class="alert alert-info">
+                    Ingresa al menos 2 caracteres para buscar
+                </div>
+            `;
+            return;
+        }
+        
+        resultadosDiv.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border spinner-border-sm text-warning" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2 text-muted">Buscando usuarios...</p>
+            </div>
+        `;
+        
+        fetch(`/buscar_usuarios?q=${encodeURIComponent(query)}`)
+            .then(response => {
+                if (!response.ok) {
+                    console.error('Error en la respuesta:', response.status);
+                    throw new Error('Error en la búsqueda');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Usuarios encontrados:', data.usuarios);
+                
+                if (data.usuarios.length === 0) {
+                    resultadosDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            No se encontraron usuarios con "${query}"
+                        </div>
+                    `;
+                    return;
+                }
+                
+                resultadosDiv.innerHTML = '';
+                
+                data.usuarios.forEach(usuario => {
+                    const template = document.getElementById('templateUsuario').content.cloneNode(true);
+                    
+                    // Foto
+                    const img = template.querySelector('.img-usuario');
+                    img.src = obtenerFotoPerfil(usuario);
+                    img.alt = usuario.nombre_usuario;
+                    
+                    // Nombre
+                    template.querySelector('.nombre-usuario').textContent = usuario.nombre_usuario;
+                    
+                    // Ubicación
+                    const ubicacion = template.querySelector('.ubicacion-usuario');
+                    ubicacion.textContent = usuario.ubicacion || 'Sin ubicación';
+                    
+                    // Botón de acción
+                    const btnAccion = template.querySelector('.btn-action-amistad');
+                    btnAccion.setAttribute('data-id', usuario.id);
+                    
+                    switch(usuario.estado_amistad) {
+                        case 'amigos':
+                            btnAccion.className = 'btn btn-sm btn-success';
+                            btnAccion.innerHTML = '✅ Amigos';
+                            btnAccion.disabled = true;
+                            break;
+                        case 'solicitud_enviada':
+                            btnAccion.className = 'btn btn-sm btn-warning';
+                            btnAccion.innerHTML = '⏳ Pendiente';
+                            btnAccion.disabled = true;
+                            break;
+                        case 'solicitud_recibida':
+                            btnAccion.className = 'btn btn-sm btn-beersp';
+                            btnAccion.innerHTML = '📩 Responder';
+                            btnAccion.onclick = function() {
+                                // Cambiar a pestaña de solicitudes
+                                const solicitudesTab = new bootstrap.Tab(document.getElementById('solicitudes-tab'));
+                                solicitudesTab.show();
+                                cargarSolicitudes();
+                            };
+                            break;
+                        case 'rechazado':
+                            btnAccion.className = 'btn btn-sm btn-outline-secondary';
+                            btnAccion.innerHTML = 'Rechazado';
+                            btnAccion.disabled = true;
+                            break;
+                        default:
+                            btnAccion.className = 'btn btn-sm btn-beersp';
+                            btnAccion.innerHTML = '➕ Agregar';
+                            btnAccion.onclick = function() {
+                                enviarSolicitudAmistad(usuario.id);
+                            };
+                    }
+                    
+                    // Ver perfil
+                    template.querySelector('.card-body').addEventListener('click', function(e) {
+                        if (!e.target.closest('.btn-action-amistad')) {
+                            verPerfilUsuario(usuario.id);
+                        }
+                    });
+                    
+                    resultadosDiv.appendChild(template);
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                resultadosDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error al buscar usuarios: ${error.message}
+                    </div>
+                `;
+            });
+    }
+    
+    function enviarSolicitudAmistad(amigoId) {
+        const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        
+        if (csrfToken) {
+            headers['X-CSRFToken'] = csrfToken;
+        }
+        
+        fetch('/enviar_solicitud_amistad', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ amigo_id: amigoId })
+        })
+        .then(response => {
+            if (response.status === 401) {
+                mostrarNotificacion('Tu sesión ha expirado', 'error');
+                window.location.href = '/login';
+                return;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                mostrarNotificacion(data.message, 'success');
+                buscarUsuarios(); // Recargar resultados
+                cargarSolicitudes(); // Actualizar solicitudes
+            } else {
+                mostrarNotificacion(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarNotificacion('Error al enviar solicitud', 'error');
+        });
+    }
+    
+    // --- SOLICITUDES DE AMISTAD ---
+    
+    function cargarSolicitudes() {
+        const recibidasDiv = document.getElementById('solicitudesRecibidas');
+        const enviadasDiv = document.getElementById('solicitudesEnviadas');
+        
+        console.log("📩 Cargando solicitudes...");
+        
+        fetch(`/solicitudes_amistad`)
+            .then(response => {
+                if (!response.ok) {
+                    console.error('Error en solicitudes:', response.status);
+                    throw new Error('Error al cargar solicitudes');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Datos de solicitudes:', data);
+                
+                // Actualizar badge
+                const badge = document.getElementById('badgeSolicitudes');
+                if (data.recibidas && data.recibidas.length > 0) {
+                    badge.textContent = data.recibidas.length;
+                    badge.classList.remove('d-none');
+                } else {
+                    badge.classList.add('d-none');
+                }
+                
+                // Solicitudes recibidas
+                if (!data.recibidas || data.recibidas.length === 0) {
+                    recibidasDiv.innerHTML = `
+                        <div class="text-center py-4 text-muted">
+                            <p>No tienes solicitudes recibidas</p>
+                        </div>
+                    `;
+                } else {
+                    recibidasDiv.innerHTML = '';
+                    data.recibidas.forEach(solicitud => {
+                        const template = document.getElementById('templateSolicitud').content.cloneNode(true);
+                        
+                        // Foto
+                        const img = template.querySelector('.img-usuario');
+                        img.src = obtenerFotoPerfil(solicitud.usuario);
+                        img.alt = solicitud.usuario.nombre_usuario;
+                        
+                        // Nombre
+                        template.querySelector('.nombre-usuario').textContent = solicitud.usuario.nombre_usuario;
+                        
+                        // Fecha
+                        template.querySelector('.fecha-solicitud').textContent = solicitud.fecha_solicitud;
+                        
+                        // Botones
+                        const btnGroup = template.querySelector('.btn-group-solicitud');
+                        btnGroup.innerHTML = `
+                            <button class="btn btn-sm btn-success btn-aceptar" data-id="${solicitud.id}">Aceptar</button>
+                            <button class="btn btn-sm btn-danger btn-rechazar" data-id="${solicitud.id}">Rechazar</button>
+                        `;
+                        
+                        recibidasDiv.appendChild(template);
+                    });
+                }
+                
+                // Solicitudes enviadas
+                if (!data.enviadas || data.enviadas.length === 0) {
+                    enviadasDiv.innerHTML = `
+                        <div class="text-center py-4 text-muted">
+                            <p>No tienes solicitudes enviadas</p>
+                        </div>
+                    `;
+                } else {
+                    enviadasDiv.innerHTML = '';
+                    data.enviadas.forEach(solicitud => {
+                        const template = document.getElementById('templateSolicitud').content.cloneNode(true);
+                        
+                        // Foto
+                        const img = template.querySelector('.img-usuario');
+                        img.src = obtenerFotoPerfil(solicitud.usuario);
+                        img.alt = solicitud.usuario.nombre_usuario;
+                        
+                        // Nombre
+                        template.querySelector('.nombre-usuario').textContent = solicitud.usuario.nombre_usuario;
+                        
+                        // Fecha
+                        template.querySelector('.fecha-solicitud').textContent = solicitud.fecha_solicitud;
+                        
+                        // Botones
+                        const btnGroup = template.querySelector('.btn-group-solicitud');
+                        btnGroup.innerHTML = `
+                            <button class="btn btn-sm btn-warning btn-cancelar" data-id="${solicitud.id}">Cancelar</button>
+                        `;
+                        
+                        enviadasDiv.appendChild(template);
+                    });
+                }
+                
+                // Asignar eventos a botones
+                recibidasDiv.querySelectorAll('.btn-aceptar').forEach(btn => {
+                    btn.onclick = function() {
+                        gestionarSolicitud(this.getAttribute('data-id'), 'aceptar');
+                    };
+                });
+                
+                recibidasDiv.querySelectorAll('.btn-rechazar').forEach(btn => {
+                    btn.onclick = function() {
+                        gestionarSolicitud(this.getAttribute('data-id'), 'rechazar');
+                    };
+                });
+                
+                enviadasDiv.querySelectorAll('.btn-cancelar').forEach(btn => {
+                    btn.onclick = function() {
+                        gestionarSolicitud(this.getAttribute('data-id'), 'cancelar');
+                    };
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                recibidasDiv.innerHTML = enviadasDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error al cargar solicitudes: ${error.message}
+                    </div>
+                `;
+            });
+    }
+    
+    function gestionarSolicitud(solicitudId, accion) {
+        const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        
+        if (csrfToken) {
+            headers['X-CSRFToken'] = csrfToken;
+        }
+        
+        console.log(`📝 Gestionando solicitud ${solicitudId} con acción: ${accion}`);
+        
+        fetch('/gestionar_solicitud', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ solicitud_id: solicitudId, accion: accion })
+        })
+        .then(response => {
+            if (response.status === 401) {
+                mostrarNotificacion('Tu sesión ha expirado', 'error');
+                window.location.href = '/login';
+                return;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                mostrarNotificacion(data.message, 'success');
+                cargarSolicitudes();
+                cargarAmigos(); // Recargar lista de amigos
+            } else {
+                mostrarNotificacion(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarNotificacion('Error al procesar solicitud', 'error');
+        });
+    }
+    
+    // --- MIS AMIGOS ---
+    
+    function cargarAmigos() {
+        const listaDiv = document.getElementById('listaAmigos');
+        
+        console.log("👥 Cargando amigos...");
+        
+        fetch(`/mis_amigos`)
+            .then(response => {
+                if (!response.ok) {
+                    console.error('Error en amigos:', response.status);
+                    throw new Error('Error al cargar amigos');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Datos de amigos:', data);
+                
+                // Actualizar contador
+                document.getElementById('contadorAmigos').textContent = data.amigos ? data.amigos.length : 0;
+                
+                if (!data.amigos || data.amigos.length === 0) {
+                    listaDiv.innerHTML = `
+                        <div class="text-center py-4 text-muted">
+                            <h6>👤 Aún no tienes amigos</h6>
+                            <p>Busca usuarios y envíales solicitudes de amistad</p>
+                            <button class="btn btn-beersp" onclick="new bootstrap.Tab(document.getElementById('buscar-tab')).show()">
+                                Buscar usuarios
+                            </button>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                listaDiv.innerHTML = '';
+                
+                data.amigos.forEach(amigo => {
+                    amigosCache[amigo.id] = amigo;
+                    
+                    const template = document.getElementById('templateAmigo').content.cloneNode(true);
+                    
+                    // Foto
+                    const img = template.querySelector('.img-usuario');
+                    img.src = obtenerFotoPerfil(amigo);
+                    img.alt = amigo.nombre_usuario;
+                    
+                    // Nombre
+                    template.querySelector('.nombre-usuario').textContent = amigo.nombre_usuario;
+                    
+                    // Presentación
+                    const presentacion = template.querySelector('.presentacion-usuario');
+                    presentacion.textContent = amigo.presentacion || 'Sin descripción';
+                    
+                    // Actividad reciente
+                    const actividadDiv = template.querySelector('.actividad-reciente');
+                    if (amigo.actividad_reciente) {
+                        actividadDiv.innerHTML = `
+                            <div class="alert alert-light p-2">
+                                <small>Última degustación:</small>
+                                <div><strong>${amigo.actividad_reciente.cerveza_nombre}</strong></div>
+                                <small class="text-muted">${amigo.actividad_reciente.cerveza_estilo} - ⭐ ${amigo.actividad_reciente.puntuacion}/5</small>
+                            </div>
+                        `;
+                    }
+                    
+                    // Botones
+                    template.querySelector('.btn-ver-perfil').setAttribute('data-id', amigo.id);
+                    template.querySelector('.btn-ver-actividad').setAttribute('data-id', amigo.id);
+                    
+                    listaDiv.appendChild(template);
+                });
+                
+                // Asignar eventos a botones
+                listaDiv.querySelectorAll('.btn-ver-perfil').forEach(btn => {
+                    btn.onclick = function() {
+                        verPerfilUsuario(this.getAttribute('data-id'));
+                    };
+                });
+                
+                listaDiv.querySelectorAll('.btn-ver-actividad').forEach(btn => {
+                    btn.onclick = function() {
+                        verActividadAmigo(this.getAttribute('data-id'));
+                    };
+                });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                listaDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error al cargar lista de amigos: ${error.message}
+                    </div>
+                `;
+            });
+    }
+    
+    // --- ACTIVIDADES DE AMIGOS ---
+    
+    function cargarActividades() {
+        const listaDiv = document.getElementById('listaActividades');
+        const contador = document.getElementById('contadorActividades');
+        const btnVerTodas = document.getElementById('btnVerTodasActividades');
+        
+        console.log("📝 Cargando actividades...");
+        
+        fetch(`/actividades_amigos`)
+            .then(response => {
+                if (!response.ok) {
+                    console.error('Error en actividades:', response.status);
+                    throw new Error('Error al cargar actividades');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Datos de actividades:', data);
+                
+                // Actualizar contador
+                contador.textContent = `${data.mostrando}/${data.total}`;
+                
+                if (!data.actividades || data.actividades.length === 0) {
+                    listaDiv.innerHTML = `
+                        <div class="text-center py-4 text-muted">
+                            <h6>📝 No hay actividades recientes</h6>
+                            <p>Tus amigos aún no han degustado cervezas</p>
+                        </div>
+                    `;
+                    btnVerTodas.style.display = 'none';
+                    return;
+                }
+                
+                // Variables para controlar qué mostrar
+                let mostrarTodas = false;
+                let actividadesAMostrar = data.actividades.slice(0, 5); // Por defecto 5
+                
+                // Función para renderizar actividades
+                function renderizarActividades(actividades) {
+                    listaDiv.innerHTML = '';
+                    
+                    actividades.forEach(actividad => {
+                        actividadesCache[actividad.id] = actividad;
+                        
+                        const template = document.getElementById('templateActividad').content.cloneNode(true);
+                        
+                        // Foto del usuario
+                        const img = template.querySelector('.img-usuario');
+                        img.src = obtenerFotoPerfil(actividad.usuario);
+                        img.alt = actividad.usuario.nombre_usuario;
+                        
+                        // Nombre del usuario
+                        const nombreLink = template.querySelector('.nombre-usuario');
+                        nombreLink.textContent = actividad.usuario.nombre_usuario;
+                        nombreLink.href = '#';
+                        nombreLink.onclick = function(e) {
+                            e.preventDefault();
+                            verPerfilUsuario(actividad.usuario.id);
+                        };
+                        
+                        // Fecha
+                        template.querySelector('.fecha-actividad').textContent = actividad.fecha;
+                        
+                        // Cerveza
+                        template.querySelector('.nombre-cerveza').textContent = actividad.cerveza.nombre;
+                        template.querySelector('.info-cerveza').textContent = 
+                            `${actividad.cerveza.estilo} · ${actividad.cerveza.pais}`;
+                        
+                        // Puntuación
+                        const puntuacionDiv = template.querySelector('.puntuacion-actividad');
+                        if (actividad.puntuacion) {
+                            let estrellas = '';
+                            for (let i = 1; i <= 5; i++) {
+                                if (i <= actividad.puntuacion) {
+                                    estrellas += '⭐';
+                                } else {
+                                    estrellas += '☆';
+                                }
+                            }
+                            puntuacionDiv.innerHTML = `
+                                <span class="badge bg-warning text-dark me-2">${actividad.puntuacion}/5</span>
+                                ${estrellas}
+                            `;
+                        }
+                        
+                        // Comentario
+                        const comentarioDiv = template.querySelector('.comentario-actividad');
+                        if (actividad.comentario) {
+                            comentarioDiv.innerHTML = `
+                                <div class="alert alert-light p-2">
+                                    <em>"${actividad.comentario}"</em>
+                                </div>
+                            `;
+                        } else {
+                            comentarioDiv.style.display = 'none';
+                        }
+                        
+                        // Local
+                        const localDiv = template.querySelector('.local-actividad');
+                        if (actividad.local) {
+                            localDiv.innerHTML = `
+                                <small class="text-muted">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-geo-alt me-1" viewBox="0 0 16 16">
+                                        <path d="M12.166 8.94c-.524 1.062-1.234 2.12-1.96 3.07A31.493 31.493 0 0 1 8 14.58a31.481 31.481 0 0 1-2.206-2.57c-.726-.95-1.436-2.008-1.96-3.07C3.304 7.867 3 6.862 3 6a5 5 0 0 1 10 0c0 .862-.305 1.867-.834 2.94zM8 16s6-5.686 6-10A6 6 0 0 0 2 6c0 4.314 6 10 6 10z"/>
+                                        <path d="M8 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4zm0 1a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+                                    </svg>
+                                    ${actividad.local}
+                                </small>
+                            `;
+                        }
+                        
+                        // Comentarios existentes
+                        const comentariosDiv = template.querySelector('.comentarios-actividad');
+                        if (actividad.comentarios && actividad.comentarios.length > 0) {
+                            let comentariosHTML = '<div class="mt-3"><small class="text-muted">Comentarios:</small>';
+                            actividad.comentarios.forEach(comentario => {
+                                comentariosHTML += `
+                                    <div class="d-flex align-items-start mb-2">
+                                        <div class="flex-grow-1 ms-2">
+                                            <small><strong>${comentario.usuario_nombre || 'Usuario ' + comentario.usuario_id}</strong>: ${comentario.texto}</small>
+                                            <br><small class="text-muted">${comentario.fecha}</small>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                            comentariosHTML += '</div>';
+                            comentariosDiv.innerHTML = comentariosHTML;
+                        }
+                        
+                        // Formulario para comentar
+                        const formComentario = template.querySelector('.form-comentario');
+                        const inputComentario = formComentario.querySelector('input');
+                        const btnEnviarComentario = formComentario.querySelector('button');
+                        
+                        formComentario.onsubmit = function(e) {
+                            e.preventDefault();
+                            const texto = inputComentario.value.trim();
+                            if (texto) {
+                                comentarDegustacion(actividad.id, texto, formComentario);
+                            }
+                        };
+                        
+                        // Botón para mostrar formulario
+                        const btnComentar = template.querySelector('.btn-link-comentar');
+                        btnComentar.onclick = function(e) {
+                            e.preventDefault();
+                            formComentario.style.display = 'flex';
+                            inputComentario.focus();
+                        };
+                        
+                        listaDiv.appendChild(template);
+                    });
+                }
+                
+                // Renderizar inicialmente (5 primeras)
+                renderizarActividades(actividadesAMostrar);
+                
+                // Configurar botón "Ver todas"/"Ver menos"
+                if (data.total > 5) {
+                    btnVerTodas.style.display = 'inline-block';
+                    btnVerTodas.textContent = 'Ver todas';
+                    
+                    btnVerTodas.onclick = function() {
+                        if (mostrarTodas) {
+                            // Volver a mostrar solo 5
+                            actividadesAMostrar = data.actividades.slice(0, 5);
+                            renderizarActividades(actividadesAMostrar);
+                            btnVerTodas.textContent = 'Ver todas';
+                            btnVerTodas.classList.remove('btn-secondary');
+                            btnVerTodas.classList.add('btn-outline-beersp');
+                            contador.textContent = `5/${data.total}`;
+                        } else {
+                            // Mostrar todas
+                            actividadesAMostrar = data.actividades;
+                            renderizarActividades(actividadesAMostrar);
+                            btnVerTodas.textContent = 'Ver menos';
+                            btnVerTodas.classList.remove('btn-outline-beersp');
+                            btnVerTodas.classList.add('btn-secondary');
+                            contador.textContent = `${data.total}/${data.total}`;
+                        }
+                        mostrarTodas = !mostrarTodas;
+                    };
+                } else {
+                    btnVerTodas.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                listaDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        Error al cargar actividades: ${error.message}
+                    </div>
+                `;
+                btnVerTodas.style.display = 'none';
+            });
+    }
+    
+    function comentarDegustacion(degustacionId, texto, formElement) {
+        const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        
+        if (csrfToken) {
+            headers['X-CSRFToken'] = csrfToken;
+        }
+        
+        fetch('/comentar_degustacion', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ degustacion_id: degustacionId, texto: texto })
+        })
+        .then(response => {
+            if (response.status === 401) {
+                mostrarNotificacion('Tu sesión ha expirado', 'error');
+                window.location.href = '/login';
+                return;
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                mostrarNotificacion('Comentario añadido', 'success');
+                formElement.reset();
+                formElement.style.display = 'none';
+                // Recargar actividades después de un momento
+                setTimeout(cargarActividades, 500);
+            } else {
+                mostrarNotificacion(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            mostrarNotificacion('Error al añadir comentario', 'error');
+        });
+    }
+    
+    // --- MODALES ---
+    
+    function verPerfilUsuario(usuarioId) {
+        const modal = new bootstrap.Modal(document.getElementById('modalPerfilAmigo'));
+        const contenido = document.getElementById('modalPerfilContenido');
+        
+        contenido.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-warning" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2">Cargando perfil...</p>
+            </div>
+        `;
+        
+        console.log(`📄 Cargando perfil del usuario ID: ${usuarioId}`);
+        
+        // Primero buscar en caché
+        if (amigosCache[usuarioId]) {
+            console.log("✅ Perfil encontrado en caché");
+            renderizarPerfil(amigosCache[usuarioId], contenido);
+        } else {
+            // Hacer petición para obtener perfil completo
+            fetch(`/perfil/${usuarioId}/info`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Error ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        console.log("✅ Perfil cargado desde API");
+                        renderizarPerfil(data.usuario, contenido);
+                    } else {
+                        contenido.innerHTML = `
+                            <div class="alert alert-danger">
+                                Error: ${data.message}
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    contenido.innerHTML = `
+                        <div class="alert alert-danger">
+                            Error al cargar el perfil: ${error.message}
+                        </div>
+                    `;
+                });
+        }
+        
+        modal.show();
+    }
+    
+    function renderizarPerfil(usuario, contenido) {
+    const currentUserId = {{ user_id }};
+    contenido.innerHTML = `
+        <div class="text-center">
+            <img src="${obtenerFotoPerfil(usuario)}" 
+                 class="rounded-circle mb-3" 
+                 width="100" height="100" style="object-fit:cover;">
+            <h4>${usuario.nombre_usuario}</h4>
+            ${usuario.ubicacion ? `<p class="text-muted">📍 ${usuario.ubicacion}</p>` : ''}
+            ${usuario.presentacion ? `<blockquote class="mt-3">${usuario.presentacion}</blockquote>` : ''}
+            <div class="mt-3">
+                <small class="text-muted">Miembro desde: ${usuario.fecha_registro || 'N/A'}</small>
+            </div>
+            <div class="mt-4">
+                <button class="btn btn-beersp" onclick="window.location.href='/ver_perfil/${usuario.id}?user_id=${currentUserId}'">
+                    Ver perfil completo
+                </button>
+            </div>
+        </div>
+    `;
+}
+    
+    function verActividadAmigo(usuarioId) {
+        const modal = new bootstrap.Modal(document.getElementById('modalDegustacionAmigo'));
+        const contenido = document.getElementById('modalDegustacionContenido');
+        
+        contenido.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-warning" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2">Cargando actividad...</p>
+            </div>
+        `;
+        
+        // Buscar actividad reciente del usuario
+        const amigo = amigosCache[usuarioId];
+        if (amigo && amigo.actividad_reciente) {
+            contenido.innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <img src="${obtenerFotoPerfil(amigo)}" 
+                                 class="rounded-circle me-3" 
+                                 width="50" height="50" style="object-fit:cover;">
+                            <div>
+                                <h5 class="mb-0">${amigo.nombre_usuario}</h5>
+                                <small class="text-muted">Degustación reciente</small>
+                            </div>
+                        </div>
+                        
+                        <h4 class="text-center mb-3">${amigo.actividad_reciente.cerveza_nombre}</h4>
+                        
+                        <div class="text-center mb-3">
+                            <span class="badge bg-warning text-dark fs-5">
+                                ⭐ ${amigo.actividad_reciente.puntuacion}/5
+                            </span>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <p class="mb-0"><strong>Estilo:</strong> ${amigo.actividad_reciente.cerveza_estilo}</p>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <a href="/ver_perfil/${usuarioId}" class="btn btn-beersp">
+                                Ver perfil de ${amigo.nombre_usuario}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            contenido.innerHTML = `
+                <div class="alert alert-info">
+                    Este usuario no tiene actividades recientes
+                </div>
+            `;
+        }
+        
+        modal.show();
+    }
+    
+    // --- INICIALIZACIÓN ---
+    
+    // Eventos de búsqueda
+    btnBuscar.onclick = buscarUsuarios;
+    inputBuscar.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            buscarUsuarios();
+        }
+    });
+    
+    // Cargar datos al cambiar de pestaña
+    document.querySelectorAll('button[data-bs-toggle="tab"]').forEach(tab => {
+        tab.addEventListener('shown.bs.tab', function(event) {
+            const target = event.target.getAttribute('data-bs-target');
+            
+            console.log(`🔁 Cambiando a pestaña: ${target}`);
+            
+            switch(target) {
+                case '#solicitudes':
+                    cargarSolicitudes();
+                    break;
+                case '#amigos':
+                    cargarAmigos();
+                    break;
+                case '#actividades':
+                    cargarActividades();
+                    break;
+            }
+        });
+    });
+    
+    // Cargar solicitudes inicialmente (para badge)
+    console.log("🚀 Inicializando página de amigos...");
+    cargarSolicitudes();
+});
+</script>
+{% endblock %}
+[file content end]
