@@ -1060,6 +1060,131 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  const btnMostrarNuevoLocal = document.getElementById('btnMostrarNuevoLocal');
+  if (btnMostrarNuevoLocal) {
+      btnMostrarNuevoLocal.onclick = function(e) {
+          e.preventDefault();
+          const formContainer = document.getElementById('formNuevoLocalContainer');
+          if (formContainer) {
+              formContainer.style.display = 'block';
+              this.style.display = 'none';
+              
+              // Cargar países en el select del formulario interno
+              cargarPaises().then(paises => {
+                  const selectPais = document.querySelector('#formNuevoLocalContainer select[name="pais"]');
+                  if (selectPais) {
+                      selectPais.innerHTML = '<option value="">Seleccionar país...</option>';
+                      paises.forEach(pais => {
+                          const option = document.createElement('option');
+                          option.value = pais;
+                          option.textContent = pais;
+                          selectPais.appendChild(option);
+                      });
+                      // Poner España por defecto
+                      const opcionEspaña = Array.from(selectPais.options).find(opt => opt.value === "España");
+                      if (opcionEspaña) {
+                          selectPais.value = "España";
+                      }
+                  }
+              });
+          }
+      };
+  }
+  
+  // Botón para guardar nuevo local dentro del modal de degustación
+  const btnGuardarNuevoLocal = document.getElementById('btnGuardarNuevoLocal');
+  if (btnGuardarNuevoLocal) {
+      btnGuardarNuevoLocal.onclick = function() {
+          // Obtener datos del formulario interno
+          const nombre = document.querySelector('#formNuevoLocalContainer input[name="nombre"]').value.trim();
+          const direccion = document.querySelector('#formNuevoLocalContainer input[name="direccion"]').value.trim();
+          const ciudad = document.querySelector('#formNuevoLocalContainer input[name="ciudad"]').value.trim();
+          const pais = document.querySelector('#formNuevoLocalContainer select[name="pais"]').value;
+          
+          if (!nombre) {
+              mostrarNotificacion('El nombre del local es obligatorio', 'error');
+              return;
+          }
+          
+          const data = { nombre, direccion, ciudad, pais };
+          
+          // Agregar CSRF token
+          const csrfToken = document.querySelector('input[name="csrf_token"]')?.value;
+          const headers = {
+              'Content-Type': 'application/json',
+          };
+          
+          if (csrfToken) {
+              headers['X-CSRFToken'] = csrfToken;
+          }
+          
+          fetch('/api/local/nuevo', {
+              method: 'POST',
+              headers: headers,
+              body: JSON.stringify(data)
+          })
+          .then(response => {
+              if (!response.ok) {
+                  throw new Error(`Error HTTP: ${response.status}`);
+              }
+              return response.json();
+          })
+          .then(result => {
+              if (result.success) {
+                  mostrarNotificacion(result.message, 'success');
+                  
+                  // Ocultar formulario y restaurar botón
+                  const formContainer = document.getElementById('formNuevoLocalContainer');
+                  const btnMostrar = document.getElementById('btnMostrarNuevoLocal');
+                  
+                  if (formContainer) formContainer.style.display = 'none';
+                  if (btnMostrar) btnMostrar.style.display = 'block';
+                  
+                  // Limpiar formulario
+                  document.querySelector('#formNuevoLocalContainer input[name="nombre"]').value = '';
+                  document.querySelector('#formNuevoLocalContainer input[name="direccion"]').value = '';
+                  document.querySelector('#formNuevoLocalContainer input[name="ciudad"]').value = '';
+                  
+                  // Recargar locales y seleccionar el nuevo
+                  cargarLocales().then(() => {
+                      const localSelect = document.getElementById('local_id');
+                      if (localSelect && result.local_id) {
+                          localSelect.value = result.local_id;
+                      }
+                  });
+                  
+              } else {
+                  mostrarNotificacion(result.message, 'error');
+              }
+          })
+          .catch(error => {
+              console.error('Error:', error);
+              mostrarNotificacion('Error al guardar el local: ' + error.message, 'error');
+          });
+      };
+  }
+  
+  // Botón cancelar nuevo local dentro del modal de degustación
+  const btnCancelarNuevoLocal = document.getElementById('btnCancelarNuevoLocal');
+  if (btnCancelarNuevoLocal) {
+      btnCancelarNuevoLocal.onclick = function() {
+          const formContainer = document.getElementById('formNuevoLocalContainer');
+          const btnMostrar = document.getElementById('btnMostrarNuevoLocal');
+          
+          if (formContainer) {
+              formContainer.style.display = 'none';
+              // Limpiar formulario
+              document.querySelector('#formNuevoLocalContainer input[name="nombre"]').value = '';
+              document.querySelector('#formNuevoLocalContainer input[name="direccion"]').value = '';
+              document.querySelector('#formNuevoLocalContainer input[name="ciudad"]').value = '';
+          }
+          
+          if (btnMostrar) {
+              btnMostrar.style.display = 'block';
+          }
+      };
+  }
+
   // --- BOTONES DE CANCELAR MEJORADOS ---
   
   // Botón cancelar en modal de nuevo local - VERSIÓN CORREGIDA

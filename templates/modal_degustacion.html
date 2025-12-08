@@ -57,16 +57,54 @@
             </select>
           </div>
 
-          <!-- Local -->
+          <!-- Local - CON FORMULARIO INTEGRADO -->
           <div class="mb-3">
-            <label class="form-label">Local/Cervecería</label>
-            <select class="form-select" name="local_id" id="local_id">
-              <option value="">Seleccionar local...</option>
-              <!-- Se llenará dinámicamente con JavaScript -->
-            </select>
-            <div class="form-text">
-              <a href="#" id="btnNuevoLocal" data-bs-toggle="modal" data-bs-target="#modalNuevoLocal">+ Añadir nuevo local</a>
-            </div>
+              <label class="form-label">Local/Cervecería</label>
+              
+              <!-- Selector de local existente -->
+              <select class="form-select" name="local_id" id="local_id">
+                  <option value="">Seleccionar local...</option>
+                  <!-- Se llenará dinámicamente con JavaScript -->
+              </select>
+              
+              <!-- FORMULARIO DE NUEVO LOCAL (integrado) -->
+              <div id="formNuevoLocalContainer" style="display: none; margin-top: 15px; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px;">
+                  <h6 class="mb-3">➕ Nuevo Local</h6>
+                  
+                  <div class="mb-2">
+                      <label class="form-label small">Nombre del local *</label>
+                      <input type="text" class="form-control form-control-sm" name="nombre" required>
+                  </div>
+                  
+                  <div class="mb-2">
+                      <label class="form-label small">Dirección</label>
+                      <input type="text" class="form-control form-control-sm" name="direccion">
+                  </div>
+                  
+                  <div class="row mb-2">
+                      <div class="col-md-6">
+                          <label class="form-label small">Ciudad</label>
+                          <input type="text" class="form-control form-control-sm" name="ciudad">
+                      </div>
+                      <div class="col-md-6">
+                          <label class="form-label small">País</label>
+                          <select class="form-select form-select-sm" name="pais">
+                              <option value="">Seleccionar país...</option>
+                              <!-- Se llenará dinámicamente -->
+                          </select>
+                      </div>
+                  </div>
+                  
+                  <div class="d-flex justify-content-between mt-3">
+                      <button type="button" class="btn btn-sm btn-secondary" id="btnCancelarNuevoLocal">Cancelar</button>
+                      <button type="button" class="btn btn-sm btn-beersp" id="btnGuardarNuevoLocal">Guardar Local</button>
+                  </div>
+              </div>
+              
+              <!-- Botón para mostrar formulario -->
+              <div class="form-text">
+                  <a href="#" id="btnMostrarNuevoLocal">+ Añadir nuevo local</a>
+              </div>
           </div>
 
           <!-- País de consumo - CAMBIADO: Ahora condicional -->
