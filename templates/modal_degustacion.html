@@ -69,13 +69,14 @@
             </div>
           </div>
 
-          <!-- País de consumo -->
-          <div class="mb-3">
+          <!-- País de consumo - CAMBIADO: Ahora condicional -->
+          <div class="mb-3" id="paisConsumicionContainer" style="display: none;">
             <label class="form-label">País donde se consumió</label>
             <select class="form-select" name="pais_consumicion" id="pais_consumicion">
               <option value="">Seleccionar país...</option>
               <!-- Se llenará dinámicamente con JavaScript desde API -->
             </select>
+            <small class="text-muted">Solo si el local no tiene país definido</small>
           </div>
 
           <!-- Comentario -->
@@ -93,136 +94,6 @@
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" id="btnCancelarDegustacion">Cancelar</button>
         <button type="button" class="btn btn-beersp" id="btnGuardarDegustacion">Guardar Degustación</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal para nuevo local -->
-<div class="modal fade" id="modalNuevoLocal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Añadir Nuevo Local</h5>
-        <button type="button" class="btn-close" id="btnCerrarLocal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="formNuevoLocal">
-          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-          <div class="mb-3">
-            <label class="form-label">Nombre del local *</label>
-            <input type="text" class="form-control" name="nombre" required>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Dirección</label>
-            <input type="text" class="form-control" name="direccion" placeholder="Calle, número...">
-          </div>
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Ciudad</label>
-              <input type="text" class="form-control" name="ciudad">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">País</label>
-              <select class="form-select" name="pais">
-                <option value="">Seleccionar país...</option>
-                <!-- Se llenará dinámicamente con JavaScript desde API -->
-              </select>
-            </div>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" id="btnCancelarLocal">Cancelar</button>
-        <button type="button" class="btn btn-beersp" id="btnGuardarLocal">Guardar Local</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Modal para nueva cerveza -->
-<div class="modal fade" id="modalNuevaCerveza" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Añadir Nueva Cerveza</h5>
-        <button type="button" class="btn-close" id="btnCerrarNuevaCerveza" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="formNuevaCerveza">
-          {% if csrf_token %}<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">{% endif %}
-          
-          <div class="mb-3">
-            <label class="form-label">Nombre de la cerveza *</label>
-            <input type="text" class="form-control" name="nombre" id="nuevaCervezaNombre" required>
-          </div>
-          
-          <div class="mb-3">
-            <label class="form-label">Estilo *</label>
-            <select class="form-select" name="estilo" id="nuevaCervezaEstilo" required>
-              <option value="">Seleccionar estilo...</option>
-              <option value="Lager">Lager</option>
-              <option value="Pilsner">Pilsner</option>
-              <option value="IPA">IPA</option>
-              <option value="American IPA">American IPA</option>
-              <option value="Double IPA">Double IPA</option>
-              <option value="Pale Ale">Pale Ale</option>
-              <option value="Stout">Stout</option>
-              <option value="Porter">Porter</option>
-              <option value="Weissbier">Weissbier</option>
-              <option value="Belgian Ale">Belgian Ale</option>
-              <option value="Amber Ale">Amber Ale</option>
-              <option value="Brown Ale">Brown Ale</option>
-              <option value="Red Ale">Red Ale</option>
-              <option value="Sour">Sour</option>
-              <option value="Gose">Gose</option>
-              <option value="Saison">Saison</option>
-              <option value="Barleywine">Barleywine</option>
-              <option value="Bock">Bock</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </div>
-          
-          <div class="mb-3">
-            <label class="form-label">País de procedencia *</label>
-            <select class="form-select" name="pais_procedencia" id="nuevaCervezaPais" required>
-              <option value="">Seleccionar país...</option>
-              <!-- Se llenará dinámicamente con JavaScript desde API -->
-            </select>
-          </div>
-          
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label">Porcentaje de alcohol (ABV) *</label>
-              <input type="number" class="form-control" name="porcentaje_alcohol" min="0" max="20" step="0.1" required>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">IBU (Amargor)</label>
-              <input type="number" class="form-control" name="ibu" min="0" max="100" placeholder="Opcional">
-            </div>
-          </div>
-          
-          <div class="mb-3">
-            <label class="form-label">Color</label>
-            <select class="form-select" name="color">
-              <option value="">Seleccionar color...</option>
-              <option value="Dorado pálido">Dorado pálido</option>
-              <option value="Dorado claro">Dorado claro</option>
-              <option value="Dorado ámbar">Dorado ámbar</option>
-              <option value="Ámbar claro">Ámbar claro</option>
-              <option value="Ámbar dorado">Ámbar dorado</option>
-              <option value="Ámbar intenso">Ámbar intenso</option>
-              <option value="Ámbar profundo">Ámbar profundo</option>
-              <option value="Marrón rojizo">Marrón rojizo</option>
-              <option value="Marrón oscuro">Marrón oscuro</option>
-              <option value="Negro con espuma tostada">Negro con espuma tostada</option>
-            </select>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" id="btnCancelarNuevaCerveza">Cancelar</button>
-        <button type="button" class="btn btn-beersp" id="btnGuardarNuevaCerveza">Guardar Cerveza</button>
       </div>
     </div>
   </div>

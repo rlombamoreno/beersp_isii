@@ -1,5 +1,3 @@
-[file name]: inicio.html
-[file content begin]
 {% extends "base.html" %}
 
 {% block content %}
@@ -39,12 +37,6 @@
           <div class="p-2 bg-light rounded">
             <h4 class="text-beersp mb-0">{{ stats.degustaciones }}</h4>
             <small class="text-muted">Degustaciones</small>
-          </div>
-        </div>
-        <div class="col-4">
-          <div class="p-2 bg-light rounded">
-            <h4 class="text-beersp mb-0">{{ stats.locales_nuevos }}</h4>
-            <small class="text-muted">Locales nuevos</small>
           </div>
         </div>
         <div class="col-4">
@@ -93,8 +85,8 @@
         ⭐ Mis cervezas favoritas
         <button class="btn btn-sm btn-outline-secondary d-none" id="btnVerTodasFavoritas">Ver todas</button>
       </h5>
-      <ul class="list-unstyled mb-0" id="listaFavoritas"></ul>
-      <div id="favoritasTodas" class="mt-2"></div>
+      <div id="listaFavoritas" class="mb-2"></div>
+      <div id="favoritasTodas" class="mt-2 border-top pt-2 d-none"></div>
     </div>
   </div>
   
@@ -352,10 +344,10 @@ function llenarSelectPaises(paises) {
     }
 }
 
-// --- ACTUALIZAR SECCIÓN FAVORITAS ---
 function actualizarSeccionFavoritas() {
   const seccion = document.getElementById('seccionFavoritas');
   const lista = document.getElementById('listaFavoritas');
+  const todasDiv = document.getElementById('favoritasTodas');
   const btn = document.getElementById('btnVerTodasFavoritas');
 
   const disponibles = favoritasIds.filter(id => cervezasCache[id]);
@@ -366,81 +358,77 @@ function actualizarSeccionFavoritas() {
   }
   
   seccion.classList.remove('d-none');
-  const paraMostrar = disponibles.slice(0, 3);
+  const primeras3 = disponibles.slice(0, 3);
+  const resto = disponibles.slice(3);
   
-  // Limpiar lista y elementos adicionales
+  // Renderizar primeras 3
   lista.innerHTML = '';
-  const todasDiv = document.getElementById('favoritasTodas');
-  if (todasDiv) {
-    todasDiv.remove();
-  }
-
-  // Mostrar primeras 3
-  paraMostrar.forEach(id => {
+  primeras3.forEach(id => {
     const c = cervezasCache[id];
     const puntuacionStr = c.puntuacion !== undefined && c.puntuacion !== null
       ? ` — ⭐ ${parseFloat(c.puntuacion).toFixed(1)}`
       : '';
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <div class="d-flex align-items-center mb-2">
+    
+    const div = document.createElement('div');
+    div.className = 'd-flex align-items-center mb-2';
+    div.innerHTML = `
+      <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2"
+           style="width:30px;height:30px;">
+        <small class="text-beersp">🍺</small>
+      </div>
+      <div class="flex-grow-1">
+        <strong class="d-block">${c.nombre}</strong>
+        <small class="text-muted d-block">${c.estilo}${puntuacionStr}</small>
+      </div>
+    `;
+    lista.appendChild(div);
+  });
+  
+  // Renderizar resto (oculto por defecto)
+  todasDiv.innerHTML = '';
+  todasDiv.classList.add('d-none');
+  
+  if (resto.length > 0) {
+    resto.forEach(id => {
+      const c = cervezasCache[id];
+      const puntuacionStr = c.puntuacion !== undefined && c.puntuacion !== null
+        ? ` — ⭐ ${parseFloat(c.puntuacion).toFixed(1)}`
+        : '';
+      
+      const div = document.createElement('div');
+      div.className = 'd-flex align-items-center mb-2';
+      div.innerHTML = `
         <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2"
              style="width:30px;height:30px;">
           <small class="text-beersp">🍺</small>
         </div>
-        <div>
-          <strong>${c.nombre}</strong>
+        <div class="flex-grow-1">
+          <strong class="d-block">${c.nombre}</strong>
           <small class="text-muted d-block">${c.estilo}${puntuacionStr}</small>
         </div>
-      </div>
-    `;
-    lista.appendChild(li);
-  });
-
-  // Manejar botón "Ver todas"
-  if (disponibles.length > 3) {
-    btn.classList.remove('d-none');
+      `;
+      todasDiv.appendChild(div);
+    });
     
-    // Función para mostrar/ocultar todas
+    // Mostrar botón
+    btn.classList.remove('d-none');
+    btn.textContent = 'Ver todas';
+    btn.classList.remove('btn-secondary');
+    btn.classList.add('btn-outline-secondary');
+    
     btn.onclick = () => {
-      const todasDiv = document.getElementById('favoritasTodas');
-      if (todasDiv) {
-        // Si ya está expandido, ocultar
-        todasDiv.remove();
-        btn.textContent = 'Ver todas';
-        btn.classList.remove('btn-secondary');
-        btn.classList.add('btn-outline-secondary');
-      } else {
-        // Si está contraído, expandir
-        const nuevasTodasDiv = document.createElement('div');
-        nuevasTodasDiv.id = 'favoritasTodas';
-        nuevasTodasDiv.classList.add('mt-2');
-        
-        disponibles.slice(3).forEach(id => {
-          const c = cervezasCache[id];
-          const puntuacionStr = c.puntuacion !== undefined && c.puntuacion !== null
-            ? ` — ⭐ ${parseFloat(c.puntuacion).toFixed(1)}`
-            : '';
-          const li = document.createElement('li');
-          li.innerHTML = `
-            <div class="d-flex align-items-center mb-2">
-              <div class="bg-light rounded-circle d-flex align-items-center justify-content-center me-2"
-                   style="width:30px;height:30px;">
-                <small class="text-beersp">🍺</small>
-              </div>
-              <div>
-                <strong>${c.nombre}</strong>
-                <small class="text-muted d-block">${c.estilo}${puntuacionStr}</small>
-              </div>
-            </div>
-          `;
-          nuevasTodasDiv.appendChild(li);
-        });
-        
-        lista.parentNode.appendChild(nuevasTodasDiv);
+      if (todasDiv.classList.contains('d-none')) {
+        // Mostrar todas
+        todasDiv.classList.remove('d-none');
         btn.textContent = 'Ver menos';
         btn.classList.remove('btn-outline-secondary');
         btn.classList.add('btn-secondary');
+      } else {
+        // Ocultar
+        todasDiv.classList.add('d-none');
+        btn.textContent = 'Ver todas';
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-outline-secondary');
       }
     };
   } else {
@@ -1161,9 +1149,118 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   // --- FIN CARGA INICIAL ---
 });
+// --- PAÍS DE CONSUMO CONDICIONAL ---
+
+// Función para manejar el cambio de local
+function configurarPaisCondicional() {
+    const localSelect = document.getElementById('local_id');
+    const paisContainer = document.getElementById('paisConsumicionContainer');
+    const paisSelect = document.getElementById('pais_consumicion');
+    
+    if (!localSelect || !paisContainer || !paisSelect) return;
+    
+    // Evento cuando cambia el local seleccionado
+    localSelect.addEventListener('change', async function() {
+        const localId = this.value;
+        
+        if (localId) {
+            try {
+                // Obtener información del local desde la API
+                const response = await fetch(`/api/local/${localId}/info`);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success && data.local.pais) {
+                        // El local tiene país definido
+                        // 1. Ocultar campo de país
+                        paisContainer.style.display = 'none';
+                        
+                        // 2. Seleccionar automáticamente el país del local
+                        for (let option of paisSelect.options) {
+                            if (option.value === data.local.pais) {
+                                paisSelect.value = data.local.pais;
+                                break;
+                            }
+                        }
+                        
+                        console.log(`📍 País automático: ${data.local.pais} (del local)`);
+                    } else {
+                        // El local no tiene país definido
+                        // 1. Mostrar campo de país
+                        paisContainer.style.display = 'block';
+                        
+                        // 2. Resetear selección
+                        paisSelect.value = '';
+                        
+                        console.log('ℹ️ Local sin país definido, mostrando selector');
+                    }
+                }
+            } catch (error) {
+                console.error('Error al obtener info del local:', error);
+                // Por defecto, mostrar el selector
+                paisContainer.style.display = 'block';
+                paisSelect.value = '';
+            }
+        } else {
+            // No hay local seleccionado
+            // 1. Mostrar campo de país
+            paisContainer.style.display = 'block';
+            
+            // 2. Resetear selección
+            paisSelect.value = '';
+            
+            console.log('ℹ️ No hay local seleccionado, mostrando selector de país');
+        }
+    });
+}
+
+// Llamar a la función cuando el modal se muestra
+document.getElementById('modalDegustacion').addEventListener('show.bs.modal', function() {
+    // Configurar el país condicional
+    configurarPaisCondicional();
+    
+    // También cargar países y locales
+    cargarLocales();
+    cargarPaises().then(paises => {
+        llenarSelectPaises(paises);
+    });
+});
+
+// --- FIN PAÍS CONDICIONAL ---
 </script>
 
 <style>
+  /* Estilos para la sección de favoritas */
+#listaFavoritas, #favoritasTodas {
+  list-style: none !important; /* Elimina puntos de lista */
+  padding-left: 0 !important;  /* Elimina sangría */
+  margin-bottom: 0 !important; /* Sin margen extra */
+}
+
+.favorita-item {
+  list-style: none !important;
+  margin-bottom: 0.5rem;
+}
+
+.favorita-item:last-child {
+  margin-bottom: 0;
+}
+
+#seccionFavoritas .card-body {
+  padding-bottom: 0.5rem; /* Menos padding abajo */
+}
+
+#btnVerTodasFavoritas {
+  margin-top: 0.5rem; /* Separación del contenido */
+}
+
+/* Transición suave para expandir/contraer */
+#favoritasTodas {
+  transition: all 0.3s ease;
+  max-height: 500px; /* Límite máximo */
+  overflow: hidden;
+}
+
 .text-beersp {
   color: #d4a017;
 }
@@ -1193,4 +1290,3 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 </style>
 {% endblock %}
-[file content end]

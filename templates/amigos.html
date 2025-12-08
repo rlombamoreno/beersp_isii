@@ -1,5 +1,3 @@
-[file name]: amigos.html
-[file content begin]
 {% extends "base.html" %}
 
 {% block content %}
@@ -54,30 +52,37 @@
         
         <!-- TAB 2: Solicitudes -->
         <div class="tab-pane fade" id="solicitudes" role="tabpanel">
-            <h5>Solicitudes de amistad</h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5>Solicitudes de amistad</h5>
+                <span id="badgeSolicitudes" class="badge bg-danger d-none">0</span>
+            </div>
             
-            <div class="row">
-                <div class="col-md-6">
-                    <h6 class="border-bottom pb-2">📨 Recibidas</h6>
-                    <div id="solicitudesRecibidas">
-                        <div class="text-center py-4">
-                            <div class="spinner-border spinner-border-sm text-warning" role="status">
-                                <span class="visually-hidden">Cargando...</span>
-                            </div>
-                            <p class="mt-2 text-muted">Cargando solicitudes...</p>
+            <!-- Solicitudes recibidas -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">📨 Recibidas <span id="contadorRecibidas" class="badge bg-secondary ms-1">0</span></h6>
+                </div>
+                <div class="card-body" id="solicitudesRecibidas">
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-warning" role="status">
+                            <span class="visually-hidden">Cargando...</span>
                         </div>
+                        <p class="mt-2 text-muted">Cargando solicitudes recibidas...</p>
                     </div>
                 </div>
-                
-                <div class="col-md-6">
-                    <h6 class="border-bottom pb-2">📤 Enviadas</h6>
-                    <div id="solicitudesEnviadas">
-                        <div class="text-center py-4">
-                            <div class="spinner-border spinner-border-sm text-warning" role="status">
-                                <span class="visually-hidden">Cargando...</span>
-                            </div>
-                            <p class="mt-2 text-muted">Cargando solicitudes...</p>
+            </div>
+            
+            <!-- Solicitudes enviadas -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">📤 Enviadas <span id="contadorEnviadas" class="badge bg-secondary ms-1">0</span></h6>
+                </div>
+                <div class="card-body" id="solicitudesEnviadas">
+                    <div class="text-center py-4">
+                        <div class="spinner-border spinner-border-sm text-warning" role="status">
+                            <span class="visually-hidden">Cargando...</span>
                         </div>
+                        <p class="mt-2 text-muted">Cargando solicitudes enviadas...</p>
                     </div>
                 </div>
             </div>
@@ -547,6 +552,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function cargarSolicitudes() {
         const recibidasDiv = document.getElementById('solicitudesRecibidas');
         const enviadasDiv = document.getElementById('solicitudesEnviadas');
+        const contadorRecibidas = document.getElementById('contadorRecibidas');
+        const contadorEnviadas = document.getElementById('contadorEnviadas');
+        const badge = document.getElementById('badgeSolicitudes');
         
         console.log("📩 Cargando solicitudes...");
         
@@ -561,13 +569,21 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 console.log('Datos de solicitudes:', data);
                 
+                // Actualizar contadores
+                const recibidasCount = data.recibidas ? data.recibidas.length : 0;
+                const enviadasCount = data.enviadas ? data.enviadas.length : 0;
+                
+                if (contadorRecibidas) contadorRecibidas.textContent = recibidasCount;
+                if (contadorEnviadas) contadorEnviadas.textContent = enviadasCount;
+                
                 // Actualizar badge
-                const badge = document.getElementById('badgeSolicitudes');
-                if (data.recibidas && data.recibidas.length > 0) {
-                    badge.textContent = data.recibidas.length;
-                    badge.classList.remove('d-none');
-                } else {
-                    badge.classList.add('d-none');
+                if (badge) {
+                    if (recibidasCount > 0) {
+                        badge.textContent = recibidasCount;
+                        badge.classList.remove('d-none');
+                    } else {
+                        badge.classList.add('d-none');
+                    }
                 }
                 
                 // Solicitudes recibidas
@@ -596,7 +612,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Botones
                         const btnGroup = template.querySelector('.btn-group-solicitud');
                         btnGroup.innerHTML = `
-                            <button class="btn btn-sm btn-success btn-aceptar" data-id="${solicitud.id}">Aceptar</button>
+                            <button class="btn btn-sm btn-success btn-aceptar me-1" data-id="${solicitud.id}">Aceptar</button>
                             <button class="btn btn-sm btn-danger btn-rechazar" data-id="${solicitud.id}">Rechazar</button>
                         `;
                         
@@ -1213,4 +1229,3 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
-[file content end]

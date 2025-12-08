@@ -11,7 +11,6 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from itsdangerous import URLSafeTimedSerializer
 from dotenv import load_dotenv
-from flask_wtf.csrf import CSRFProtect
 from functools import wraps
 
 # ————— CONFIGURACIÓN INICIAL —————
@@ -33,7 +32,6 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY') or 'una_clave_secreta_muy_seg
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_dir, "beersp.db")}'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-csrf = CSRFProtect(app)
 
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
 app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 587))
@@ -450,13 +448,6 @@ def inicio():
     # Contar degustaciones reales
     degustaciones_count = Degustacion.query.filter_by(usuario_id=usuario_id).count()
     
-    # Contar locales nuevos (últimos 7 días)
-    una_semana_atras = datetime.now(timezone.utc) - timedelta(days=7)
-    locales_nuevos_count = Degustacion.query.filter(
-        Degustacion.usuario_id == usuario_id,
-        Degustacion.fecha >= una_semana_atras,
-        Degustacion.local_id.isnot(None)
-    ).distinct(Degustacion.local_id).count()
     
     solicitudes_amistad = Amistad.query.filter_by(amigo_id=usuario_id, estado='pendiente').count()
 
@@ -510,7 +501,6 @@ def inicio():
         user_id=user_id,  # Pasar user_id al template
         stats={
             'degustaciones': degustaciones_count,
-            'locales_nuevos': locales_nuevos_count,
             'solicitudes_amistad': solicitudes_amistad
         },
         amigos_activos=amigos_activos,
@@ -590,7 +580,6 @@ def cervezas_por_ids():
 
 @app.route('/toggle_favorita', methods=['POST'])
 @requiere_sesion
-@csrf.exempt
 def toggle_favorita():
     user_id = session.get('user_id_temp') or session.get('user_id')
     
@@ -787,10 +776,23 @@ def api_degustacion_nueva():
     if not cerveza:
         return jsonify({"success": False, "message": "Cerveza no encontrada"}), 404
     
+    # LÓGICA MEJORADA PARA PAÍS DE CONSUMO
+    pais_final = None
+    
     if local_id:
         local = Local.query.get(local_id)
         if not local:
             return jsonify({"success": False, "message": "Local no encontrado"}), 404
+        
+        # PRIORIDAD 1: País del local
+        if local.pais:
+            pais_final = local.pais
+        # PRIORIDAD 2: País especificado manualmente
+        elif pais_consumicion:
+            pais_final = pais_consumicion
+    # PRIORIDAD 3: Solo país especificado (sin local)
+    elif pais_consumicion:
+        pais_final = pais_consumicion
     
     nueva_degustacion = Degustacion(
         usuario_id=user_id,
@@ -800,7 +802,7 @@ def api_degustacion_nueva():
         comentario=comentario or None,
         tamaño=tamaño or None,
         formato=formato or None,
-        pais_consumicion=pais_consumicion or None
+        pais_consumicion=pais_final  # Puede ser None si no hay info
     )
     
     db.session.add(nueva_degustacion)
@@ -809,7 +811,28 @@ def api_degustacion_nueva():
     return jsonify({
         "success": True,
         "degustacion_id": nueva_degustacion.id,
-        "message": "¡Degustación registrada exitosamente!"
+        "message": "¡Degustación registrada exitosamente!",
+        "pais_usado": pais_final or "No especificado"
+    })
+    
+    
+@app.route('/api/local/<int:id>/info')
+@requiere_sesion
+def api_local_info(id):
+    """Obtener información de un local específico"""
+    local = Local.query.get(id)
+    if not local:
+        return jsonify({"success": False, "message": "Local no encontrado"}), 404
+    
+    return jsonify({
+        "success": True,
+        "local": {
+            "id": local.id,
+            "nombre": local.nombre,
+            "direccion": local.direccion,
+            "ciudad": local.ciudad,
+            "pais": local.pais
+        }
     })
 
 @app.route('/mis_degustaciones')
@@ -1190,7 +1213,6 @@ def buscar_usuarios():
 
 @app.route('/enviar_solicitud_amistad', methods=['POST'])
 @requiere_sesion
-@csrf.exempt
 def enviar_solicitud_amistad():
     user_id = session.get('user_id_temp') or session.get('user_id')
     
@@ -1306,7 +1328,6 @@ def solicitudes_amistad():
 
 @app.route('/gestionar_solicitud', methods=['POST'])
 @requiere_sesion
-@csrf.exempt
 def gestionar_solicitud():
     user_id = session.get('user_id_temp') or session.get('user_id')
     
@@ -1509,7 +1530,6 @@ def actividades_amigos():
 
 @app.route('/comentar_degustacion', methods=['POST'])
 @requiere_sesion
-@csrf.exempt
 def comentar_degustacion():
     user_id = session.get('user_id_temp') or session.get('user_id')
     
