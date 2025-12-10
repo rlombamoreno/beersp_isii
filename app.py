@@ -1356,7 +1356,8 @@ def gestionar_solicitud():
         amistad.estado = 'aceptado'
         mensaje = "Solicitud aceptada"
     elif accion == 'rechazar':
-        amistad.estado = 'rechazado'
+        db.session.delete(amistad)
+        db.session.commit()
         mensaje = "Solicitud rechazada"
     elif accion == 'cancelar':
         db.session.delete(amistad)
